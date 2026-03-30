@@ -1,36 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# C Exam Trainer
 
-## Getting Started
+Herramienta de entrenamiento para aprobar el examen de programación en C de la asignatura OGM803 (UAL). Cubre las prácticas PR2 a PR7 con 29 ejercicios organizados por dificultad.
 
-First, run the development server:
+## Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Estilos**: Tailwind CSS 4 + shadcn/ui
+- **IA**: OpenAI API (gpt-4o-mini) para explicaciones pedagógicas
+- **Persistencia**: localStorage (sin backend)
+- **Despliegue**: Vercel
+
+## Funcionalidades
+
+- 29 ejercicios alineados con las prácticas reales PR2-PR7
+- 3 fases de aprendizaje: Aprender, Practicar, Demostrar
+- Sistema de pistas progresivas con escalera de ayuda
+- Explicaciones con IA (sin chat libre, contextual al ejercicio)
+- Progreso guardado en localStorage
+- Semáforo de comprensión y detección de bloques débiles
+- Ruta de aprendizaje recomendada
+- Modo examen con justificación y evaluación IA
+
+## Arrancar en local
 
 ```bash
+# Instalar dependencias
+npm install
+
+# Configurar variables de entorno
+cp .env.example .env.local
+# Editar .env.local y añadir tu clave de OpenAI
+
+# Arrancar servidor de desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Variables de entorno
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Requerida | Descripcion |
+|----------|-----------|-------------|
+| `OPENAI_API_KEY` | Opcional | Clave de API de OpenAI para las explicaciones con IA. Sin ella, la app funciona pero los botones de IA muestran un mensaje de configuracion. |
 
-## Learn More
+## Desplegar en Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. Sube el repo a GitHub
+2. Importa el proyecto en [vercel.com/new](https://vercel.com/new)
+3. Configura la variable de entorno `OPENAI_API_KEY` en Settings > Environment Variables
+4. Despliega
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Estructura del proyecto
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/
+  page.tsx          # Home, bloques, selector de fase
+  layout.tsx        # Layout raiz
+  api/explain/      # Endpoint de IA
+components/
+  exercise-view.tsx # Vista de ejercicio (3 fases)
+  ui/               # Componentes shadcn
+lib/
+  exercises.ts      # Dataset de 29 ejercicios
+  blocks.ts         # 7 bloques tematicos
+  types.ts          # Tipos TypeScript
+  progress.ts       # Progreso en localStorage
+  utils.ts          # Utilidades
+```
