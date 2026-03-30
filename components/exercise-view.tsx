@@ -36,6 +36,7 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
 
   // All existing state
   const [step, setStep] = useState(0);
+  const [quizAnswer, setQuizAnswer] = useState<boolean | null>(null);
   const [hintsRevealed, setHintsRevealed] = useState(0);
   const [pseudocodeVisible, setPseudocodeVisible] = useState(false);
   const [solutionVisible, setSolutionVisible] = useState(false);
@@ -69,6 +70,7 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
       setUnderstanding(saved.understanding ?? null);
     }
     setStep(0);
+    setQuizAnswer(null);
     setAiExplanation(''); setAiError(''); setAiLoading(false);
     setJustification('');
   }, [exercise.slug, phase]);
@@ -131,9 +133,31 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
   const currentStep = steps[Math.min(step, totalSteps - 1)];
 
   function buildSteps(p: Phase): string[] {
-    if (p === 'learn') return ['intro', 'problem', 'example', 'pattern', 'mistakes', 'hints', 'pseudocode', 'solution', 'ai', 'takeaway'];
-    if (p === 'practice') return ['intro', 'problem', 'example', 'think', 'code', 'help', 'solution', 'feeling'];
+    if (p === 'learn') return ['intro', 'problem', 'example', 'quiz', 'pattern', 'mistakes', 'hints', 'pseudocode', 'solution', 'ai', 'takeaway'];
+    if (p === 'practice') return ['intro', 'problem', 'example', 'quiz', 'think', 'code', 'help', 'solution', 'feeling'];
     return ['intro', 'problem', 'example', 'code', 'justify', 'review', 'compare', 'feeling'];
+  }
+
+  // Generate a quiz question from the first common mistake
+  function getQuiz(): { question: string; correctAnswer: boolean; explanation: string } {
+    const mistake = exercise.commonMistakes[0] || '';
+    // Generate yes/no questions based on common mistake patterns
+    if (mistake.toLowerCase().includes('olvidar') || mistake.toLowerCase().includes('no ')) {
+      return {
+        question: mistake.replace(/^Olvidar /i, '¿Hace falta ').replace(/^No /i, '¿Hay que ') + '?',
+        correctAnswer: true,
+        explanation: mistake,
+      };
+    }
+    if (mistake.toLowerCase().includes('usar') && mistake.toLowerCase().includes('en vez de')) {
+      return { question: '¿Sabrías decir cuál es la trampa más común aquí?', correctAnswer: false, explanation: mistake };
+    }
+    // Default: turn mistake into a challenge
+    return {
+      question: `¿Esto te suena? "${mistake.slice(0, 60)}${mistake.length > 60 ? '...' : ''}"`,
+      correctAnswer: true,
+      explanation: 'Exacto. Es una de las trampas más comunes en este tipo de ejercicio. Tenlo en cuenta.',
+    };
   }
 
   const advance = () => setStep(s => Math.min(s + 1, totalSteps - 1));
@@ -200,10 +224,38 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
             </StepCard>
           )}
 
+          {currentStep === 'quiz' && (() => {
+            const quiz = getQuiz();
+            return (
+              <StepCard>
+                <StepLabel>Antes de seguir...</StepLabel>
+                <p className="text-base leading-relaxed mb-6">{quiz.question}</p>
+                {quizAnswer === null ? (
+                  <div className="flex gap-3">
+                    <button onClick={() => setQuizAnswer(true)}
+                      className="flex-1 py-4 rounded-xl border-2 text-base font-medium hover:bg-emerald-50 hover:border-emerald-300 transition-colors">Sí</button>
+                    <button onClick={() => setQuizAnswer(false)}
+                      className="flex-1 py-4 rounded-xl border-2 text-base font-medium hover:bg-red-50 hover:border-red-300 transition-colors">No</button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className={`rounded-xl p-4 mb-4 ${quizAnswer === quiz.correctAnswer ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
+                      <p className={`text-sm font-medium mb-1 ${quizAnswer === quiz.correctAnswer ? 'text-emerald-800' : 'text-amber-800'}`}>
+                        {quizAnswer === quiz.correctAnswer ? 'Bien visto.' : 'No pasa nada, fíjate en esto:'}
+                      </p>
+                      <p className="text-sm">{quiz.explanation}</p>
+                    </div>
+                    <BigButton onClick={() => { setQuizAnswer(null); advance(); }}>Seguir</BigButton>
+                  </div>
+                )}
+              </StepCard>
+            );
+          })()}
+
           {currentStep === 'pattern' && (
             <StepCard>
-              <StepLabel>Los pasos para resolverlo</StepLabel>
-              <p className="text-sm text-muted-foreground mb-3">{exercise.pattern}</p>
+              <StepLabel>Cómo se resuelve</StepLabel>
+              <p className="text-base text-muted-foreground mb-3">{exercise.pattern}</p>
               <ol className="space-y-2 mb-6">
                 {exercise.patternSteps.map((s, i) => (
                   <li key={i} className="flex gap-3 items-start">
@@ -218,8 +270,8 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
 
           {currentStep === 'think' && (
             <StepCard>
-              <StepLabel>Antes de escribir, piensa</StepLabel>
-              <p className="text-sm text-muted-foreground mb-4">Intenta pensar los pasos en tu cabeza antes de tocar el teclado.</p>
+              <StepLabel>Piensa antes de escribir</StepLabel>
+              <p className="text-base text-muted-foreground mb-4">Repasa estos pasos en tu cabeza. No toques el teclado todavía.</p>
               <ol className="space-y-2 mb-6">
                 {exercise.patternSteps.map((s, i) => (
                   <li key={i} className="flex gap-3 items-start">
@@ -228,14 +280,14 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
                   </li>
                 ))}
               </ol>
-              <BigButton onClick={advance}>Listo, voy a escribir</BigButton>
+              <BigButton onClick={advance}>Vamos, a escribir</BigButton>
             </StepCard>
           )}
 
           {currentStep === 'mistakes' && (
             <StepCard>
-              <StepLabel>Trampas habituales</StepLabel>
-              <p className="text-xs text-muted-foreground mb-3">Cosas que le pasan a mucha gente:</p>
+              <StepLabel>Ojo con esto</StepLabel>
+              <p className="text-base text-muted-foreground mb-3">Le pasa a casi todo el mundo:</p>
               <ul className="space-y-2 mb-6">
                 {exercise.commonMistakes.map((m, i) => (
                   <li key={i} className="flex gap-2 text-sm">
@@ -306,9 +358,9 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
 
           {currentStep === 'code' && (
             <StepCard>
-              <StepLabel>{phase === 'test' ? 'Escribe tu solución' : 'Tu turno'}</StepLabel>
-              <p className="text-xs text-muted-foreground mb-2">
-                {phase === 'test' ? 'Como en un examen. Sin ayudas.' : 'Escribe lo que puedas. No pasa nada si no sale a la primera.'}
+              <StepLabel>{phase === 'test' ? 'A por ello' : 'Tu turno'}</StepLabel>
+              <p className="text-base text-muted-foreground mb-3">
+                {phase === 'test' ? 'Sin ayudas. Tú solo.' : 'Escribe lo que te salga. Si te atascas, sigue al siguiente paso.'}
               </p>
               <textarea value={attemptText} onChange={e => handleAttemptChange(e.target.value)}
                 placeholder={"#include <stdio.h>\n\nint main() {\n    \n\n    return 0;\n}"}
@@ -321,13 +373,13 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
 
           {currentStep === 'help' && (
             <StepCard>
-              <StepLabel>¿Necesitas ayuda?</StepLabel>
+              <StepLabel>¿Te echo una mano?</StepLabel>
               <div className="space-y-2 mb-4">
-                <button onClick={() => requestAI('explain')} className="w-full text-left px-4 py-3 border rounded-xl text-sm hover:bg-indigo-50 transition-colors">No entiendo el ejercicio</button>
-                <button onClick={() => requestAI('start')} className="w-full text-left px-4 py-3 border rounded-xl text-sm hover:bg-indigo-50 transition-colors">No sé por dónde empezar</button>
-                {attemptText.trim() && <button onClick={() => requestAI('review')} className="w-full text-left px-4 py-3 border rounded-xl text-sm hover:bg-indigo-50 transition-colors">Revisa mi intento</button>}
-                {hintsRevealed < usefulHints.length && <button onClick={revealHint} className="w-full text-left px-4 py-3 border rounded-xl text-sm hover:bg-amber-50 transition-colors">Dame una pista ({hintsRevealed}/{usefulHints.length})</button>}
-                {!pseudocodeVisible && <button onClick={revealPseudocode} className="w-full text-left px-4 py-3 border rounded-xl text-sm hover:bg-muted transition-colors">Ver pseudocódigo</button>}
+                <button onClick={() => requestAI('explain')} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">No lo pillo</button>
+                <button onClick={() => requestAI('start')} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">No sé ni por dónde empezar</button>
+                {attemptText.trim() && <button onClick={() => requestAI('review')} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">Mira lo que llevo</button>}
+                {hintsRevealed < usefulHints.length && <button onClick={revealHint} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-amber-50 hover:border-amber-200 transition-colors">Dame una pista</button>}
+                {!pseudocodeVisible && <button onClick={revealPseudocode} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-muted transition-colors">Ver los pasos escritos</button>}
               </div>
 
               {/* Show revealed content */}
@@ -349,8 +401,8 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
 
           {currentStep === 'justify' && (
             <StepCard>
-              <StepLabel>Explica por qué</StepLabel>
-              <p className="text-xs text-muted-foreground mb-2">Describe en tus palabras qué hace tu programa y por qué.</p>
+              <StepLabel>¿Por qué lo has hecho así?</StepLabel>
+              <p className="text-base text-muted-foreground mb-3">Explícalo como si se lo contaras a alguien.</p>
               <textarea value={justification} onChange={e => setJustification(e.target.value)}
                 placeholder="He usado un for porque... La validación va primero porque..."
                 className="w-full h-32 bg-card border rounded-xl p-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-4" spellCheck={false} />
