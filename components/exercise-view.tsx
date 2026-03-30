@@ -3,12 +3,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { getExercise, getExercisesByBlock } from '@/lib/exercises';
 import { BLOCKS } from '@/lib/blocks';
-import { getProgress, updateProgress, type Understanding } from '@/lib/progress';
+import { EXERCISES } from '@/lib/exercises';
+import { getProgress, updateProgress, getAllProgress, type Understanding } from '@/lib/progress';
 import type { Exercise } from '@/lib/types';
 import type { Phase } from '@/app/page';
 
 const PHASE_LABEL: Record<Phase, string> = { learn: 'Aprender', practice: 'Practicar', test: 'Demostrar' };
 const PHASE_COLOR: Record<Phase, string> = { learn: 'bg-emerald-500', practice: 'bg-blue-500', test: 'bg-purple-500' };
+
+const ENCOURAGEMENTS = ['Bien visto.', 'Eso es.', 'Vas bien.', 'Correcto.', 'Exacto.'];
+const randomEncouragement = () => ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
 
 interface Props {
   slug: string;
@@ -24,17 +28,20 @@ export function ExerciseView({ slug, phase, onBack, onNavigate, onChangePhase }:
   return <StepFlow exercise={exercise} phase={phase} onBack={onBack} onNavigate={onNavigate} onChangePhase={onChangePhase} />;
 }
 
-// ════════════════════════════════════════════════
-// STEP FLOW
-// ════════════════════════════════════════════════
-
 function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exercise: Exercise; phase: Phase; onBack: () => void; onNavigate: (slug: string) => void; onChangePhase: (phase: Phase) => void }) {
   const block = BLOCKS.find(b => b.id === exercise.blockId);
   const blockExercises = getExercisesByBlock(exercise.blockId);
   const currentIndex = blockExercises.findIndex(e => e.slug === exercise.slug);
   const nextExercise = currentIndex < blockExercises.length - 1 ? blockExercises[currentIndex + 1] : null;
 
-  // All existing state
+  // Global progress count
+  const [globalDone, setGlobalDone] = useState(0);
+  useEffect(() => {
+    const all = getAllProgress();
+    setGlobalDone(Object.values(all).filter(p => p.status === 'dominated' || p.status === 'with_hints' || p.status === 'attempted').length);
+  }, []);
+
+  // State
   const [step, setStep] = useState(0);
   const [quizAnswer, setQuizAnswer] = useState<boolean | null>(null);
   const [hintsRevealed, setHintsRevealed] = useState(0);
@@ -48,16 +55,18 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
   const [aiExplanation, setAiExplanation] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [showStuckHint, setShowStuckHint] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const usefulHints = exercise.hints.filter(h => {
     const lower = h.content.toLowerCase();
     return !(lower.includes('ver solución completa') || lower.includes('ver código de solución'));
   });
 
-  // Load progress
+  // Load
   useEffect(() => {
     const saved = getProgress(exercise.slug);
     if (saved) {
@@ -69,8 +78,7 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
       setDominated(saved.status === 'dominated');
       setUnderstanding(saved.understanding ?? null);
     }
-    setStep(0);
-    setQuizAnswer(null);
+    setStep(0); setQuizAnswer(null); setShowStuckHint(false);
     setAiExplanation(''); setAiError(''); setAiLoading(false);
     setJustification('');
   }, [exercise.slug, phase]);
@@ -98,6 +106,8 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
 
   const handleAttemptChange = (value: string) => {
     setAttemptText(value);
+    setShowStuckHint(false);
+    if (stuckTimerRef.current) clearTimeout(stuckTimerRef.current);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       updateProgress(exercise.slug, { attemptText: value, lastAttempt: new Date().toISOString() });
@@ -127,397 +137,309 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
-  // ── Define steps per phase ──
+  // Steps — reduced for speed
   const steps = buildSteps(phase);
   const totalSteps = steps.length;
   const currentStep = steps[Math.min(step, totalSteps - 1)];
 
   function buildSteps(p: Phase): string[] {
-    if (p === 'learn') return ['intro', 'problem', 'example', 'quiz', 'pattern', 'mistakes', 'hints', 'pseudocode', 'solution', 'ai', 'takeaway'];
-    if (p === 'practice') return ['intro', 'problem', 'example', 'quiz', 'think', 'code', 'help', 'solution', 'feeling'];
-    return ['intro', 'problem', 'example', 'code', 'justify', 'review', 'compare', 'feeling'];
+    if (p === 'learn') return ['intro', 'problem', 'example', 'quiz', 'howto', 'allhelp', 'done'];
+    if (p === 'practice') return ['intro', 'problem', 'example', 'quiz', 'code', 'help', 'solution', 'done'];
+    return ['intro', 'problem', 'example', 'code', 'justify', 'review', 'compare', 'done'];
   }
 
-  // Generate a quiz question from the first common mistake
   function getQuiz(): { question: string; correctAnswer: boolean; explanation: string } {
     const mistake = exercise.commonMistakes[0] || '';
-    // Generate yes/no questions based on common mistake patterns
     if (mistake.toLowerCase().includes('olvidar') || mistake.toLowerCase().includes('no ')) {
-      return {
-        question: mistake.replace(/^Olvidar /i, '¿Hace falta ').replace(/^No /i, '¿Hay que ') + '?',
-        correctAnswer: true,
-        explanation: mistake,
-      };
+      return { question: mistake.replace(/^Olvidar /i, '¿Hace falta ').replace(/^No /i, '¿Hay que ') + '?', correctAnswer: true, explanation: mistake };
     }
-    if (mistake.toLowerCase().includes('usar') && mistake.toLowerCase().includes('en vez de')) {
-      return { question: '¿Sabrías decir cuál es la trampa más común aquí?', correctAnswer: false, explanation: mistake };
-    }
-    // Default: turn mistake into a challenge
-    return {
-      question: `¿Esto te suena? "${mistake.slice(0, 60)}${mistake.length > 60 ? '...' : ''}"`,
-      correctAnswer: true,
-      explanation: 'Exacto. Es una de las trampas más comunes en este tipo de ejercicio. Tenlo en cuenta.',
-    };
+    return { question: `¿Esto te suena? "${mistake.slice(0, 80)}${mistake.length > 80 ? '...' : ''}"`, correctAnswer: true, explanation: 'Exacto. Tenlo en cuenta.' };
   }
 
-  const advance = () => setStep(s => Math.min(s + 1, totalSteps - 1));
+  const advance = () => { setShowStuckHint(false); setStep(s => Math.min(s + 1, totalSteps - 1)); };
   const goBack = () => setStep(s => Math.max(s - 1, 0));
 
+  // Stuck detection on code step
+  useEffect(() => {
+    if (currentStep === 'code' && !attemptText.trim() && phase !== 'test') {
+      stuckTimerRef.current = setTimeout(() => setShowStuckHint(true), 30000);
+      return () => { if (stuckTimerRef.current) clearTimeout(stuckTimerRef.current); };
+    }
+  }, [currentStep, attemptText, phase]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center min-h-dvh px-4 py-6">
+    <div className="flex flex-col flex-1 items-center min-h-dvh px-4 py-6">
       <div className="w-full max-w-md flex flex-col flex-1">
 
-        {/* ── Top bar ── */}
-        <div className="flex items-center justify-between mb-2">
+        {/* Top bar */}
+        <div className="flex items-center justify-between mb-1">
           <button onClick={handleBack} className="text-sm text-muted-foreground hover:text-foreground">← Salir</button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {phase !== 'learn' && <span className="text-xs font-mono text-muted-foreground">{formatTime(seconds)}</span>}
-            <span className="text-xs text-muted-foreground">{currentIndex + 1}/{blockExercises.length}</span>
+            <span className="text-xs text-muted-foreground">{globalDone}/{EXERCISES.length}</span>
           </div>
         </div>
 
-        {/* ── Progress bar ── */}
-        <div className="h-1.5 bg-muted rounded-full mb-6 overflow-hidden">
-          <div className={`h-full ${PHASE_COLOR[phase]} transition-all duration-300`} style={{ width: `${((step + 1) / totalSteps) * 100}%` }} />
+        {/* Progress bar */}
+        <div className="h-2 bg-muted rounded-full mb-8 overflow-hidden">
+          <div className={`h-full ${PHASE_COLOR[phase]} transition-all duration-500 ease-out`} style={{ width: `${((step + 1) / totalSteps) * 100}%` }} />
         </div>
 
-        {/* ── Step content ── */}
-        <div className="flex-1 flex flex-col">
+        {/* Step content */}
+        <div className="flex-1 flex flex-col justify-center">
 
           {currentStep === 'intro' && (
-            <StepCard>
-              <p className="text-xs text-muted-foreground mb-2">{block?.title} · {exercise.estimatedMinutes} min</p>
-              <h1 className="text-2xl font-bold mb-4">{exercise.title}</h1>
-              <p className="text-base leading-relaxed mb-6">{exercise.pattern}</p>
-              <div className="flex gap-1 mb-4">
+            <Step>
+              <p className="text-xs text-muted-foreground mb-3">{block?.title}</p>
+              <h1 className="text-2xl font-bold mb-6">{exercise.title}</h1>
+              <div className="flex gap-1 mb-6">
                 {(['learn', 'practice', 'test'] as Phase[]).map(p => (
                   <button key={p} onClick={() => onChangePhase(p)}
-                    className={`text-xs px-3 py-1 rounded-full border transition-colors ${p === phase ? PHASE_COLOR[p] + ' text-white border-transparent' : 'text-muted-foreground hover:bg-muted'}`}>
+                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${p === phase ? PHASE_COLOR[p] + ' text-white border-transparent' : 'text-muted-foreground hover:bg-muted'}`}>
                     {PHASE_LABEL[p]}
                   </button>
                 ))}
               </div>
-              <BigButton onClick={advance}>Empezar</BigButton>
-            </StepCard>
+              <Btn onClick={advance}>Empezar</Btn>
+            </Step>
           )}
 
           {currentStep === 'problem' && (
-            <StepCard>
-              <StepLabel>Esto es lo que tienes que hacer</StepLabel>
-              <div className="text-sm leading-relaxed whitespace-pre-wrap mb-6">{exercise.statement}</div>
-              <BigButton onClick={advance}>Entendido</BigButton>
-            </StepCard>
+            <Step>
+              <Label>Qué tienes que hacer</Label>
+              <p className="text-base leading-relaxed whitespace-pre-wrap mb-6">{exercise.statement}</p>
+              <Btn onClick={advance}>Entendido</Btn>
+            </Step>
           )}
 
           {currentStep === 'example' && (
-            <StepCard>
-              <StepLabel>Ejemplo</StepLabel>
-              <div className="mb-4">
-                <p className="text-xs text-muted-foreground mb-1">Si le das esto:</p>
-                <pre className="bg-muted rounded-lg p-3 font-mono text-sm">{exercise.exampleInput}</pre>
-              </div>
-              <div className="mb-6">
-                <p className="text-xs text-muted-foreground mb-1">Tiene que mostrar:</p>
-                <pre className="bg-muted rounded-lg p-3 font-mono text-sm">{exercise.exampleOutput}</pre>
-              </div>
-              <BigButton onClick={advance}>Vale, lo veo</BigButton>
-            </StepCard>
+            <Step>
+              <Label>Ejemplo</Label>
+              <p className="text-sm text-muted-foreground mb-1">Le das:</p>
+              <pre className="bg-muted rounded-xl p-3 font-mono text-sm mb-4">{exercise.exampleInput}</pre>
+              <p className="text-sm text-muted-foreground mb-1">Y muestra:</p>
+              <pre className="bg-muted rounded-xl p-3 font-mono text-sm mb-6">{exercise.exampleOutput}</pre>
+              <Btn onClick={advance}>Vale</Btn>
+            </Step>
           )}
 
           {currentStep === 'quiz' && (() => {
             const quiz = getQuiz();
             return (
-              <StepCard>
-                <StepLabel>Antes de seguir...</StepLabel>
-                <p className="text-base leading-relaxed mb-6">{quiz.question}</p>
+              <Step>
+                <Label>Piensa un momento</Label>
+                <p className="text-base leading-relaxed mb-8">{quiz.question}</p>
                 {quizAnswer === null ? (
                   <div className="flex gap-3">
-                    <button onClick={() => setQuizAnswer(true)}
-                      className="flex-1 py-4 rounded-xl border-2 text-base font-medium hover:bg-emerald-50 hover:border-emerald-300 transition-colors">Sí</button>
-                    <button onClick={() => setQuizAnswer(false)}
-                      className="flex-1 py-4 rounded-xl border-2 text-base font-medium hover:bg-red-50 hover:border-red-300 transition-colors">No</button>
+                    <button onClick={() => setQuizAnswer(true)} className="flex-1 py-4 rounded-xl border-2 text-base font-medium hover:bg-emerald-50 hover:border-emerald-300 transition-colors">Sí</button>
+                    <button onClick={() => setQuizAnswer(false)} className="flex-1 py-4 rounded-xl border-2 text-base font-medium hover:bg-red-50 hover:border-red-300 transition-colors">No</button>
                   </div>
                 ) : (
-                  <div>
-                    <div className={`rounded-xl p-4 mb-4 ${quizAnswer === quiz.correctAnswer ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
-                      <p className={`text-sm font-medium mb-1 ${quizAnswer === quiz.correctAnswer ? 'text-emerald-800' : 'text-amber-800'}`}>
-                        {quizAnswer === quiz.correctAnswer ? 'Bien visto.' : 'No pasa nada, fíjate en esto:'}
+                  <>
+                    <div className={`rounded-xl p-4 mb-6 ${quizAnswer === quiz.correctAnswer ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
+                      <p className={`text-base font-medium ${quizAnswer === quiz.correctAnswer ? 'text-emerald-800' : 'text-amber-800'}`}>
+                        {quizAnswer === quiz.correctAnswer ? randomEncouragement() : 'Fíjate:'}
                       </p>
-                      <p className="text-sm">{quiz.explanation}</p>
+                      <p className="text-sm mt-1">{quiz.explanation}</p>
                     </div>
-                    <BigButton onClick={() => { setQuizAnswer(null); advance(); }}>Seguir</BigButton>
-                  </div>
+                    <Btn onClick={() => { setQuizAnswer(null); advance(); }}>Seguir</Btn>
+                  </>
                 )}
-              </StepCard>
+              </Step>
             );
           })()}
 
-          {currentStep === 'pattern' && (
-            <StepCard>
-              <StepLabel>Cómo se resuelve</StepLabel>
-              <p className="text-base text-muted-foreground mb-3">{exercise.pattern}</p>
+          {/* LEARN: howto = pattern + mistakes merged */}
+          {currentStep === 'howto' && (
+            <Step>
+              <Label>Cómo se resuelve</Label>
               <ol className="space-y-2 mb-6">
                 {exercise.patternSteps.map((s, i) => (
                   <li key={i} className="flex gap-3 items-start">
                     <span className="shrink-0 w-6 h-6 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold">{i + 1}</span>
-                    <span className="text-sm pt-0.5">{s}</span>
+                    <span className="text-sm">{s}</span>
                   </li>
                 ))}
               </ol>
-              <BigButton onClick={advance}>Seguir</BigButton>
-            </StepCard>
-          )}
-
-          {currentStep === 'think' && (
-            <StepCard>
-              <StepLabel>Piensa antes de escribir</StepLabel>
-              <p className="text-base text-muted-foreground mb-4">Repasa estos pasos en tu cabeza. No toques el teclado todavía.</p>
-              <ol className="space-y-2 mb-6">
-                {exercise.patternSteps.map((s, i) => (
-                  <li key={i} className="flex gap-3 items-start">
-                    <span className="shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">{i + 1}</span>
-                    <span className="text-sm pt-0.5">{s}</span>
-                  </li>
-                ))}
-              </ol>
-              <BigButton onClick={advance}>Vamos, a escribir</BigButton>
-            </StepCard>
-          )}
-
-          {currentStep === 'mistakes' && (
-            <StepCard>
-              <StepLabel>Ojo con esto</StepLabel>
-              <p className="text-base text-muted-foreground mb-3">Le pasa a casi todo el mundo:</p>
-              <ul className="space-y-2 mb-6">
-                {exercise.commonMistakes.map((m, i) => (
-                  <li key={i} className="flex gap-2 text-sm">
-                    <span className="text-orange-400 shrink-0 mt-0.5">→</span>
-                    <span>{m}</span>
-                  </li>
-                ))}
-              </ul>
-              <BigButton onClick={advance}>Seguir</BigButton>
-            </StepCard>
-          )}
-
-          {currentStep === 'hints' && (
-            <StepCard>
-              <StepLabel>Pistas</StepLabel>
-              <div className="space-y-2 mb-6">
-                {usefulHints.map((hint, i) => (
-                  <div key={i} className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                    <p className="text-xs font-semibold text-amber-700 mb-1">{hint.label}</p>
-                    <p className="text-sm whitespace-pre-wrap">{hint.content}</p>
-                  </div>
-                ))}
-              </div>
-              <BigButton onClick={advance}>Seguir</BigButton>
-            </StepCard>
-          )}
-
-          {currentStep === 'pseudocode' && (
-            <StepCard>
-              <StepLabel>Pseudocódigo</StepLabel>
-              <p className="text-xs text-muted-foreground mb-2">Esto no es C. Son los pasos sin preocuparte por la sintaxis.</p>
-              <pre className="bg-muted rounded-lg p-3 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.pseudocode}</pre>
-              <BigButton onClick={advance}>Seguir</BigButton>
-            </StepCard>
-          )}
-
-          {currentStep === 'solution' && (
-            <StepCard>
-              {phase === 'learn' ? (
-                <>
-                  <StepLabel>Solución en C</StepLabel>
-                  <p className="text-xs text-muted-foreground mb-2">Estúdiala línea por línea.</p>
-                  <pre className="bg-zinc-900 text-zinc-100 rounded-lg p-3 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
-                  <BigButton onClick={advance}>Seguir</BigButton>
-                </>
-              ) : (
-                <>
-                  <StepLabel>¿Necesitas ver la solución?</StepLabel>
-                  {!solutionVisible ? (
-                    <div className="space-y-3">
-                      <p className="text-sm text-muted-foreground">Si quieres intentarlo más, vuelve atrás. Si ya terminaste, puedes ver la solución.</p>
-                      <div className="flex gap-2">
-                        <BigButton onClick={() => { revealSolution(); }}>Ver solución</BigButton>
-                        <button onClick={goBack} className="flex-1 py-3 rounded-xl border text-sm hover:bg-muted transition-colors">Volver a intentar</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="text-xs text-muted-foreground mb-2">Compara con tu intento.</p>
-                      <pre className="bg-zinc-900 text-zinc-100 rounded-lg p-3 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
-                      <BigButton onClick={advance}>Seguir</BigButton>
-                    </>
-                  )}
-                </>
+              {exercise.commonMistakes.length > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-6">
+                  <p className="text-xs font-medium text-orange-700 mb-1">Ojo</p>
+                  <p className="text-sm text-orange-800">{exercise.commonMistakes[0]}</p>
+                </div>
               )}
-            </StepCard>
+              <Btn onClick={advance}>Seguir</Btn>
+            </Step>
+          )}
+
+          {/* LEARN: allhelp = hints + pseudocode + solution */}
+          {currentStep === 'allhelp' && (
+            <Step>
+              <Label>La solución completa</Label>
+              {usefulHints.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
+                  <p className="text-sm whitespace-pre-wrap">{usefulHints[0].content}</p>
+                </div>
+              )}
+              <pre className="bg-muted rounded-xl p-3 text-xs font-mono whitespace-pre-wrap overflow-x-auto mb-3">{exercise.pseudocode}</pre>
+              <pre className="bg-zinc-900 text-zinc-100 rounded-xl p-3 text-xs font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
+              <Btn onClick={advance}>Seguir</Btn>
+            </Step>
           )}
 
           {currentStep === 'code' && (
-            <StepCard>
-              <StepLabel>{phase === 'test' ? 'A por ello' : 'Tu turno'}</StepLabel>
-              <p className="text-base text-muted-foreground mb-3">
-                {phase === 'test' ? 'Sin ayudas. Tú solo.' : 'Escribe lo que te salga. Si te atascas, sigue al siguiente paso.'}
-              </p>
+            <Step>
+              <Label>{phase === 'test' ? 'A por ello' : 'Tu turno'}</Label>
               <textarea value={attemptText} onChange={e => handleAttemptChange(e.target.value)}
-                placeholder={"#include <stdio.h>\n\nint main() {\n    \n\n    return 0;\n}"}
-                className="w-full h-52 bg-card border rounded-xl p-3 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-4" spellCheck={false} />
-              <BigButton onClick={advance} disabled={!attemptText.trim()}>
+                placeholder={"#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}"}
+                className="w-full h-52 bg-card border-2 rounded-xl p-3 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-3" spellCheck={false} />
+              {showStuckHint && !attemptText.trim() && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mb-3">
+                  <p className="text-sm text-indigo-800 mb-2">Sin prisa. ¿Te echo una mano?</p>
+                  <button onClick={() => { setShowStuckHint(false); advance(); }} className="text-sm text-indigo-700 font-medium hover:underline">Sí, ayúdame</button>
+                </div>
+              )}
+              <Btn onClick={advance} disabled={!attemptText.trim()}>
                 {attemptText.trim() ? 'Seguir' : 'Escribe algo primero'}
-              </BigButton>
-            </StepCard>
+              </Btn>
+            </Step>
           )}
 
           {currentStep === 'help' && (
-            <StepCard>
-              <StepLabel>¿Te echo una mano?</StepLabel>
+            <Step>
+              <Label>¿Te echo una mano?</Label>
               <div className="space-y-2 mb-4">
                 <button onClick={() => requestAI('explain')} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">No lo pillo</button>
-                <button onClick={() => requestAI('start')} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">No sé ni por dónde empezar</button>
+                <button onClick={() => requestAI('start')} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">No sé por dónde empezar</button>
                 {attemptText.trim() && <button onClick={() => requestAI('review')} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">Mira lo que llevo</button>}
                 {hintsRevealed < usefulHints.length && <button onClick={revealHint} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-amber-50 hover:border-amber-200 transition-colors">Dame una pista</button>}
-                {!pseudocodeVisible && <button onClick={revealPseudocode} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-muted transition-colors">Ver los pasos escritos</button>}
               </div>
-
-              {/* Show revealed content */}
               {aiLoading && <p className="text-sm text-indigo-600 animate-pulse mb-3">Pensando...</p>}
               {aiError && <p className="text-sm text-red-600 mb-3">{aiError}</p>}
               {aiExplanation && <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-sm mb-3 whitespace-pre-wrap">{aiExplanation}</div>}
-              {hintsRevealed > 0 && (
-                <div className="space-y-2 mb-3">
-                  {usefulHints.slice(0, hintsRevealed).map((h, i) => (
-                    <div key={i} className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm whitespace-pre-wrap">{h.content}</div>
-                  ))}
-                </div>
-              )}
-              {pseudocodeVisible && <pre className="bg-muted rounded-xl p-3 text-sm font-mono whitespace-pre-wrap mb-3">{exercise.pseudocode}</pre>}
+              {hintsRevealed > 0 && usefulHints.slice(0, hintsRevealed).map((h, i) => (
+                <div key={i} className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm mb-2 whitespace-pre-wrap">{h.content}</div>
+              ))}
+              <Btn onClick={advance}>Seguir</Btn>
+            </Step>
+          )}
 
-              <BigButton onClick={advance}>Seguir</BigButton>
-            </StepCard>
+          {currentStep === 'solution' && (
+            <Step>
+              {!solutionVisible ? (
+                <>
+                  <Label>¿Quieres ver la solución?</Label>
+                  <div className="flex gap-2">
+                    <Btn onClick={() => revealSolution()}>Sí, verla</Btn>
+                    <button onClick={goBack} className="flex-1 py-3.5 rounded-xl border-2 text-sm font-medium hover:bg-muted transition-colors">Volver a intentar</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Label>Solución</Label>
+                  <pre className="bg-zinc-900 text-zinc-100 rounded-xl p-3 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
+                  <Btn onClick={advance}>Seguir</Btn>
+                </>
+              )}
+            </Step>
           )}
 
           {currentStep === 'justify' && (
-            <StepCard>
-              <StepLabel>¿Por qué lo has hecho así?</StepLabel>
-              <p className="text-base text-muted-foreground mb-3">Explícalo como si se lo contaras a alguien.</p>
+            <Step>
+              <Label>¿Por qué lo has hecho así?</Label>
               <textarea value={justification} onChange={e => setJustification(e.target.value)}
-                placeholder="He usado un for porque... La validación va primero porque..."
-                className="w-full h-32 bg-card border rounded-xl p-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-4" spellCheck={false} />
-              <BigButton onClick={advance} disabled={!justification.trim()}>
-                {justification.trim() ? 'Evaluar' : 'Escribe tu explicación'}
-              </BigButton>
-            </StepCard>
+                placeholder="He usado un for porque..."
+                className="w-full h-28 bg-card border-2 rounded-xl p-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-4" spellCheck={false} />
+              <Btn onClick={advance} disabled={!justification.trim()}>
+                {justification.trim() ? 'Evaluar' : 'Escribe algo'}
+              </Btn>
+            </Step>
           )}
 
           {currentStep === 'review' && (
-            <StepCard>
-              <StepLabel>Revisión</StepLabel>
+            <Step>
+              <Label>Revisión</Label>
               {!aiExplanation && !aiLoading && !aiError && (
                 <div className="space-y-2 mb-4">
-                  <button onClick={() => requestAI('review', { userAttempt: `CÓDIGO:\n${attemptText}\n\nJUSTIFICACIÓN:\n${justification}` })} className="w-full py-3 bg-purple-100 border border-purple-300 text-purple-800 rounded-xl text-sm hover:bg-purple-200 transition-colors">Evaluar mi respuesta</button>
-                  <button onClick={() => requestAI('exam_explain', { justification: justification.trim() })} className="w-full py-3 border rounded-xl text-sm hover:bg-muted transition-colors">¿Cómo explicaría esto en el examen?</button>
+                  <Btn onClick={() => requestAI('review', { userAttempt: `CÓDIGO:\n${attemptText}\n\nJUSTIFICACIÓN:\n${justification}` })}>Evaluar mi respuesta</Btn>
+                  <button onClick={() => requestAI('exam_explain', { justification: justification.trim() })} className="w-full py-3.5 rounded-xl border-2 text-sm font-medium hover:bg-muted transition-colors">¿Cómo lo explicaría en el examen?</button>
                 </div>
               )}
               {aiLoading && <p className="text-sm text-purple-600 animate-pulse mb-4">Revisando...</p>}
               {aiError && <p className="text-sm text-red-600 mb-4">{aiError}</p>}
               {aiExplanation && <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-sm whitespace-pre-wrap mb-4">{aiExplanation}</div>}
-              {(aiExplanation || aiError) && <BigButton onClick={advance}>Seguir</BigButton>}
-            </StepCard>
+              {(aiExplanation || aiError) && <Btn onClick={advance}>Seguir</Btn>}
+            </Step>
           )}
 
           {currentStep === 'compare' && (
-            <StepCard>
-              <StepLabel>Compara con la solución</StepLabel>
+            <Step>
+              <Label>Compara</Label>
               {!solutionVisible ? (
-                <div className="space-y-3">
-                  <button onClick={revealSolution} className="w-full py-3 border rounded-xl text-sm hover:bg-muted transition-colors">Ver solución de referencia</button>
-                </div>
+                <Btn onClick={revealSolution}>Ver solución</Btn>
               ) : (
-                <pre className="bg-zinc-900 text-zinc-100 rounded-xl p-3 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-4">{exercise.solutionCode}</pre>
+                <>
+                  <pre className="bg-zinc-900 text-zinc-100 rounded-xl p-3 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
+                  <Btn onClick={advance}>Seguir</Btn>
+                </>
               )}
-              <BigButton onClick={advance} className="mt-4">Seguir</BigButton>
-            </StepCard>
+            </Step>
           )}
 
-          {currentStep === 'ai' && (
-            <StepCard>
-              <StepLabel>¿Algo no te queda claro?</StepLabel>
-              <button onClick={() => requestAI('explain')} className="w-full text-left px-4 py-3 border rounded-xl text-sm hover:bg-indigo-50 transition-colors mb-2">Explícamelo con otras palabras</button>
-              {aiLoading && <p className="text-sm text-indigo-600 animate-pulse mb-3">Pensando...</p>}
-              {aiError && <p className="text-sm text-red-600 mb-3">{aiError}</p>}
-              {aiExplanation && <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-sm mb-3 whitespace-pre-wrap">{aiExplanation}</div>}
-              <BigButton onClick={advance}>Seguir</BigButton>
-            </StepCard>
-          )}
+          {currentStep === 'done' && (
+            <Step>
+              <div className="text-center">
+                <p className="text-4xl mb-4">{phase === 'test' ? '📝' : phase === 'learn' ? '✓' : '💪'}</p>
+                <h2 className="text-xl font-bold mb-2">
+                  {phase === 'learn' ? 'Ejercicio estudiado' : phase === 'test' ? 'Terminado' : 'Buen trabajo'}
+                </h2>
 
-          {currentStep === 'takeaway' && (
-            <StepCard>
-              <div className="text-center py-4">
-                <p className="text-3xl mb-4">✓</p>
-                <h2 className="text-xl font-bold mb-2">Ejercicio completado</h2>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Has estudiado: <strong>{exercise.pattern}</strong>
-                </p>
-                <p className="text-sm text-muted-foreground mb-6">Cuando estés listo, pruébalo en modo Practicar.</p>
-                <div className="space-y-2">
-                  <BigButton onClick={() => onChangePhase('practice')}>Practicar ahora</BigButton>
-                  {nextExercise && <button onClick={() => handleNavigate(nextExercise.slug)} className="w-full py-3 border rounded-xl text-sm hover:bg-muted transition-colors">Siguiente: {nextExercise.title}</button>}
-                  <button onClick={handleBack} className="w-full py-3 text-sm text-muted-foreground hover:text-foreground transition-colors">Volver al bloque</button>
-                </div>
-              </div>
-            </StepCard>
-          )}
-
-          {currentStep === 'feeling' && (
-            <StepCard>
-              <div className="text-center py-4">
-                <p className="text-3xl mb-4">{phase === 'test' ? '📝' : '💪'}</p>
-                <h2 className="text-xl font-bold mb-2">{phase === 'test' ? 'Ejercicio terminado' : 'Buen trabajo'}</h2>
-                <p className="text-sm text-muted-foreground mb-6">¿Cómo te has sentido?</p>
-                <div className="flex gap-2 justify-center mb-6">
-                  {([
-                    { value: 'good' as Understanding, emoji: '🟢', label: 'Bien' },
-                    { value: 'medium' as Understanding, emoji: '🟡', label: 'Regular' },
-                    { value: 'bad' as Understanding, emoji: '🔴', label: 'Flojo' },
-                  ]).map(opt => (
-                    <button key={opt.value}
-                      onClick={() => {
-                        setUnderstanding(opt.value);
-                        updateProgress(exercise.slug, { understanding: opt.value, lastAttempt: new Date().toISOString() });
-                        if (!dominated && attemptText.trim() && opt.value === 'good') {
-                          setDominated(true);
-                          updateProgress(exercise.slug, { status: 'dominated', lastAttempt: new Date().toISOString() });
-                        }
-                      }}
-                      className={`flex flex-col items-center gap-1 px-5 py-3 border rounded-xl transition-colors ${understanding === opt.value ? 'bg-muted border-foreground/20' : 'hover:bg-muted/50'}`}>
-                      <span className="text-2xl">{opt.emoji}</span>
-                      <span className="text-xs">{opt.label}</span>
-                    </button>
-                  ))}
-                </div>
-                {understanding && (
-                  <p className="text-xs text-muted-foreground mb-4">
-                    {understanding === 'good' && 'Genial. Sigue avanzando.'}
-                    {understanding === 'medium' && 'Está bien. Prueba a repetirlo otro día.'}
-                    {understanding === 'bad' && 'No pasa nada. Repásalo en modo Aprender.'}
-                  </p>
+                {/* Understanding - only practice & test */}
+                {phase !== 'learn' && (
+                  <div className="flex gap-2 justify-center my-6">
+                    {([
+                      { value: 'good' as Understanding, emoji: '🟢', label: 'Bien' },
+                      { value: 'medium' as Understanding, emoji: '🟡', label: 'Regular' },
+                      { value: 'bad' as Understanding, emoji: '🔴', label: 'Flojo' },
+                    ]).map(opt => (
+                      <button key={opt.value}
+                        onClick={() => {
+                          setUnderstanding(opt.value);
+                          updateProgress(exercise.slug, { understanding: opt.value, lastAttempt: new Date().toISOString() });
+                          if (!dominated && attemptText.trim() && opt.value === 'good') {
+                            setDominated(true);
+                            updateProgress(exercise.slug, { status: 'dominated', lastAttempt: new Date().toISOString() });
+                          }
+                        }}
+                        className={`flex flex-col items-center gap-1 px-5 py-3 rounded-xl border-2 transition-colors ${understanding === opt.value ? 'bg-muted border-foreground/20' : 'hover:bg-muted/50'}`}>
+                        <span className="text-2xl">{opt.emoji}</span>
+                        <span className="text-xs">{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 )}
-                <div className="space-y-2">
-                  {nextExercise && <BigButton onClick={() => handleNavigate(nextExercise.slug)}>Siguiente: {nextExercise.title}</BigButton>}
-                  <button onClick={handleBack} className="w-full py-3 text-sm text-muted-foreground hover:text-foreground transition-colors">Volver al bloque</button>
+
+                {/* Next action - the ONE thing to do */}
+                <div className="space-y-2 mt-4">
+                  {phase === 'learn' ? (
+                    <Btn onClick={() => onChangePhase('practice')}>Practicar ahora</Btn>
+                  ) : nextExercise ? (
+                    <Btn onClick={() => handleNavigate(nextExercise.slug)}>Siguiente ejercicio</Btn>
+                  ) : (
+                    <Btn onClick={handleBack}>Volver al bloque</Btn>
+                  )}
+                  {phase !== 'learn' && nextExercise && (
+                    <button onClick={handleBack} className="w-full py-3 text-sm text-muted-foreground hover:text-foreground">Volver al bloque</button>
+                  )}
                 </div>
               </div>
-            </StepCard>
+            </Step>
           )}
         </div>
 
-        {/* ── Step navigation dots ── */}
-        {step > 0 && step < totalSteps - 1 && (
+        {/* Back nav */}
+        {step > 0 && currentStep !== 'done' && (
           <div className="flex justify-center pt-4">
-            <button onClick={goBack} className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Paso anterior</button>
+            <button onClick={goBack} className="text-xs text-muted-foreground hover:text-foreground">← Paso anterior</button>
           </div>
         )}
       </div>
@@ -525,19 +447,18 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
   );
 }
 
-// ── UI primitives ──
-function StepCard({ children }: { children: React.ReactNode }) {
+function Step({ children }: { children: React.ReactNode }) {
   return <div className="flex-1 flex flex-col justify-center">{children}</div>;
 }
 
-function StepLabel({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-lg font-bold mb-3">{children}</h2>;
+function Label({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-lg font-bold mb-4">{children}</h2>;
 }
 
-function BigButton({ children, onClick, disabled, className }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; className?: string }) {
+function Btn({ children, onClick, disabled, className }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; className?: string }) {
   return (
     <button onClick={onClick} disabled={disabled}
-      className={`w-full py-3.5 rounded-xl font-medium text-sm transition-colors ${disabled ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-foreground text-background hover:bg-foreground/90'} ${className ?? ''}`}>
+      className={`w-full py-3.5 rounded-xl font-medium text-base transition-colors ${disabled ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-foreground text-background hover:bg-foreground/90'} ${className ?? ''}`}>
       {children}
     </button>
   );
