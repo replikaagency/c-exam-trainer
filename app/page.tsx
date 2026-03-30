@@ -53,7 +53,7 @@ export default function Home() {
     const dominatedCount = EXERCISES.filter(e => progress[e.slug]?.status === 'dominated').length;
 
     return (
-      <div className="flex flex-col flex-1 max-w-3xl mx-auto w-full px-4 py-8">
+      <div className="flex flex-col flex-1 max-w-md mx-auto w-full px-4 py-8">
         <header className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight">Aprende C paso a paso</h1>
           <p className="text-muted-foreground mt-1">
@@ -118,7 +118,7 @@ export default function Home() {
     const block = BLOCKS.find(b => b.id === view.blockId)!;
     const exercises = getExercisesByBlock(view.blockId);
     return (
-      <div className="flex flex-col flex-1 max-w-3xl mx-auto w-full px-4 py-8">
+      <div className="flex flex-col flex-1 max-w-md mx-auto w-full px-4 py-8">
         <button onClick={() => { refreshProgress(); setView({ type: 'home' }); }}
           className="text-sm text-muted-foreground hover:text-foreground mb-4 self-start">← Todos los bloques</button>
         <header className="mb-6">
@@ -152,7 +152,7 @@ export default function Home() {
     const block = BLOCKS.find(b => b.id === exercise.blockId);
 
     return (
-      <div className="flex flex-col flex-1 max-w-3xl mx-auto w-full px-4 py-8">
+      <div className="flex flex-col flex-1 max-w-md mx-auto w-full px-4 py-8">
         <button onClick={() => setView({ type: 'block', blockId: exercise.blockId })}
           className="text-sm text-muted-foreground hover:text-foreground mb-6 self-start">← Volver</button>
 
