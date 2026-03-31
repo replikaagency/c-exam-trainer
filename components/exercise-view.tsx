@@ -5,7 +5,7 @@ import { getExercise, getExercisesByBlock } from '@/lib/exercises';
 import { BLOCKS } from '@/lib/blocks';
 import { EXERCISES } from '@/lib/exercises';
 import { getProgress, updateProgress, getAllProgress, type Understanding } from '@/lib/progress';
-import { getScreens, type Screen } from '@/lib/screens';
+import { getScreens, buildPracticeScreens, type Screen } from '@/lib/screens';
 import type { Exercise } from '@/lib/types';
 import type { Phase } from '@/app/page';
 
@@ -27,12 +27,20 @@ export function ExerciseView({ slug, phase, onBack, onNavigate, onChangePhase }:
   const exercise = getExercise(slug);
   if (!exercise) return <div className="p-16 text-center text-muted-foreground">Ejercicio no encontrado.</div>;
 
-  // Use micro-learning screens in Learn phase if available
-  const screens = phase === 'learn' ? getScreens(slug) : null;
-  if (screens) {
-    return <ScreenFlow exercise={exercise} screens={screens} onBack={onBack} onNavigate={onNavigate} onChangePhase={onChangePhase} />;
+  // Use ScreenFlow for Learn and Practice
+  if (phase === 'learn') {
+    const screens = getScreens(slug);
+    if (screens) {
+      return <ScreenFlow exercise={exercise} screens={screens} phase={phase} onBack={onBack} onNavigate={onNavigate} onChangePhase={onChangePhase} />;
+    }
   }
 
+  if (phase === 'practice') {
+    const screens = buildPracticeScreens(exercise);
+    return <ScreenFlow exercise={exercise} screens={screens} phase={phase} onBack={onBack} onNavigate={onNavigate} onChangePhase={onChangePhase} />;
+  }
+
+  // Test mode uses StepFlow
   return <StepFlow exercise={exercise} phase={phase} onBack={onBack} onNavigate={onNavigate} onChangePhase={onChangePhase} />;
 }
 
@@ -40,8 +48,8 @@ export function ExerciseView({ slug, phase, onBack, onNavigate, onChangePhase }:
 // SCREEN FLOW (micro-learning, one screen at a time)
 // ════════════════════════════════════════════════
 
-function ScreenFlow({ exercise, screens, onBack, onNavigate, onChangePhase }: {
-  exercise: Exercise; screens: Screen[]; onBack: () => void; onNavigate: (slug: string) => void; onChangePhase: (phase: Phase) => void;
+function ScreenFlow({ exercise, screens, phase, onBack, onNavigate, onChangePhase }: {
+  exercise: Exercise; screens: Screen[]; phase: Phase; onBack: () => void; onNavigate: (slug: string) => void; onChangePhase: (phase: Phase) => void;
 }) {
   const blockExercises = getExercisesByBlock(exercise.blockId);
   const currentIndex = blockExercises.findIndex(e => e.slug === exercise.slug);
@@ -49,12 +57,85 @@ function ScreenFlow({ exercise, screens, onBack, onNavigate, onChangePhase }: {
 
   const [idx, setIdx] = useState(0);
   const [quizPicked, setQuizPicked] = useState<number | null>(null);
+  const [attemptText, setAttemptText] = useState('');
+  const [seconds, setSeconds] = useState(0);
+  const [understanding, setUnderstanding] = useState<Understanding | null>(null);
+  const [showStuckHint, setShowStuckHint] = useState(false);
 
-  useEffect(() => { setIdx(0); setQuizPicked(null); }, [exercise.slug]);
+  // AI state for practice help
+  const [aiExplanation, setAiExplanation] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setIdx(0); setQuizPicked(null); setShowStuckHint(false);
+    setAiExplanation(''); setAiError(''); setAiLoading(false);
+    const saved = getProgress(exercise.slug);
+    if (saved) {
+      setAttemptText(saved.attemptText);
+      setSeconds(saved.timeSpentSeconds);
+      setUnderstanding(saved.understanding ?? null);
+    }
+  }, [exercise.slug]);
+
+  // Timer for practice
+  useEffect(() => {
+    if (phase !== 'practice') return;
+    timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [phase]);
+
+  // Auto-save
+  const save = useCallback(() => {
+    if (phase === 'practice' && attemptText.trim()) {
+      updateProgress(exercise.slug, { attemptText, timeSpentSeconds: seconds, lastAttempt: new Date().toISOString() });
+    }
+  }, [exercise.slug, attemptText, seconds, phase]);
+  useEffect(() => { const id = setInterval(save, 15000); return () => clearInterval(id); }, [save]);
+
+  const handleAttemptChange = (value: string) => {
+    setAttemptText(value);
+    setShowStuckHint(false);
+    if (stuckTimerRef.current) clearTimeout(stuckTimerRef.current);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      updateProgress(exercise.slug, { attemptText: value, lastAttempt: new Date().toISOString() });
+    }, 2000);
+  };
+
+  const requestAI = async (mode: string) => {
+    setAiLoading(true); setAiError(''); setAiExplanation('');
+    try {
+      const res = await fetch('/api/explain', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exercise: { title: exercise.title, blockId: exercise.blockId, difficulty: exercise.difficulty, pattern: exercise.pattern, patternSteps: exercise.patternSteps, statement: exercise.statement, concepts: exercise.concepts, hints: exercise.hints },
+          userAttempt: attemptText.trim() || undefined, mode,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) setAiError(data.error || 'No se pudo generar.');
+      else setAiExplanation(data.explanation);
+    } catch { setAiError('No se pudo conectar.'); }
+    finally { setAiLoading(false); }
+  };
 
   const screen = screens[idx];
   const total = screens.length;
-  const advance = () => { setQuizPicked(null); setIdx(i => Math.min(i + 1, total - 1)); };
+  const advance = () => { setQuizPicked(null); setShowStuckHint(false); setIdx(i => Math.min(i + 1, total - 1)); };
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+
+  // Stuck detection
+  useEffect(() => {
+    if (screen?.type === 'code' && !attemptText.trim() && phase === 'practice') {
+      stuckTimerRef.current = setTimeout(() => setShowStuckHint(true), 30000);
+      return () => { if (stuckTimerRef.current) clearTimeout(stuckTimerRef.current); };
+    }
+  }, [idx, attemptText, phase, screen?.type]);
 
   return (
     <div className="flex flex-col flex-1 items-center min-h-dvh px-5 py-6">
@@ -62,13 +143,16 @@ function ScreenFlow({ exercise, screens, onBack, onNavigate, onChangePhase }: {
 
         {/* Top */}
         <div className="flex items-center justify-between mb-1">
-          <button onClick={onBack} className="text-sm text-gray-400 hover:text-foreground">← Salir</button>
-          <span className="text-xs text-gray-400">{idx + 1} / {total}</span>
+          <button onClick={() => { save(); onBack(); }} className="text-sm text-gray-400 hover:text-foreground">← Salir</button>
+          <div className="flex items-center gap-3">
+            {phase === 'practice' && <span className="text-xs font-mono text-gray-400">{formatTime(seconds)}</span>}
+            <span className="text-xs text-gray-400">{idx + 1} / {total}</span>
+          </div>
         </div>
 
         {/* Progress */}
         <div className="h-2 bg-gray-200 rounded-full mb-10 overflow-hidden">
-          <div className="h-full bg-emerald-500 rounded-full transition-all duration-500 ease-out" style={{ width: `${((idx + 1) / total) * 100}%` }} />
+          <div className={`h-full ${PHASE_COLOR[phase]} rounded-full transition-all duration-500 ease-out`} style={{ width: `${((idx + 1) / total) * 100}%` }} />
         </div>
 
         {/* Screen */}
@@ -134,18 +218,77 @@ function ScreenFlow({ exercise, screens, onBack, onNavigate, onChangePhase }: {
 
           {screen.type === 'code' && (
             <div>
-              <p className="text-lg mb-4">{screen.prompt}</p>
-              <Btn onClick={advance}>Seguir</Btn>
+              <Label>{screen.prompt}</Label>
+              <textarea value={attemptText} onChange={e => handleAttemptChange(e.target.value)}
+                placeholder={"#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}"}
+                className="w-full h-52 bg-card border-2 rounded-2xl p-3 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-3" spellCheck={false} />
+              {showStuckHint && !attemptText.trim() && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3 mb-3">
+                  <p className="text-sm text-indigo-800 mb-2">Sin prisa. ¿Te echo una mano?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => requestAI('start')} className="text-sm text-indigo-700 font-medium hover:underline">Sí, ayúdame</button>
+                    <button onClick={() => setShowStuckHint(false)} className="text-sm text-gray-400 hover:underline">No, sigo solo</button>
+                  </div>
+                </div>
+              )}
+              {aiLoading && <p className="text-sm text-indigo-600 animate-pulse mb-3">Pensando...</p>}
+              {aiExplanation && <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3 text-sm mb-3 whitespace-pre-wrap">{aiExplanation}</div>}
+              {aiError && <p className="text-sm text-red-600 mb-3">{aiError}</p>}
+              {phase === 'practice' && attemptText.trim() && (
+                <div className="flex gap-2 mb-3">
+                  <button onClick={() => requestAI('review')} className="text-sm text-indigo-600 hover:underline">Revisa mi código</button>
+                </div>
+              )}
+              <Btn onClick={advance} disabled={phase === 'practice' && !attemptText.trim()}>
+                {attemptText.trim() ? 'Seguir' : 'Escribe algo primero'}
+              </Btn>
             </div>
           )}
 
           {screen.type === 'final' && (
             <div className="text-center">
-              <p className="text-4xl mb-4">✓</p>
-              <p className="text-lg leading-relaxed whitespace-pre-line mb-8">{screen.text}</p>
+              <p className="text-4xl mb-4">{phase === 'practice' ? '💪' : '✓'}</p>
+              <p className="text-lg leading-relaxed whitespace-pre-line mb-6">{screen.text}</p>
+
+              {/* Understanding - practice only */}
+              {phase === 'practice' && (
+                <div className="flex gap-2 justify-center mb-6">
+                  {([
+                    { value: 'good' as Understanding, emoji: '🟢', label: 'Bien' },
+                    { value: 'medium' as Understanding, emoji: '🟡', label: 'Regular' },
+                    { value: 'bad' as Understanding, emoji: '🔴', label: 'Flojo' },
+                  ]).map(opt => (
+                    <button key={opt.value}
+                      onClick={() => {
+                        setUnderstanding(opt.value);
+                        updateProgress(exercise.slug, { understanding: opt.value, lastAttempt: new Date().toISOString() });
+                        if (attemptText.trim() && opt.value === 'good') {
+                          updateProgress(exercise.slug, { status: 'dominated', lastAttempt: new Date().toISOString() });
+                        }
+                      }}
+                      className={`flex flex-col items-center gap-1 px-5 py-3 rounded-2xl border-2 transition-colors ${understanding === opt.value ? 'bg-muted border-foreground/20' : 'hover:bg-muted/50'}`}>
+                      <span className="text-2xl">{opt.emoji}</span>
+                      <span className="text-xs">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="space-y-3">
-                <Btn onClick={() => onChangePhase('practice')}>Ahora a practicar</Btn>
-                {nextExercise && (
+                {phase === 'learn' ? (
+                  <Btn onClick={() => onChangePhase('practice')}>Ahora a practicar</Btn>
+                ) : nextExercise ? (
+                  <Btn onClick={() => { save(); onNavigate(nextExercise.slug); }}>Siguiente ejercicio</Btn>
+                ) : (
+                  <Btn onClick={() => { save(); onBack(); }}>Volver al bloque</Btn>
+                )}
+                {nextExercise && phase !== 'learn' && (
+                  <button onClick={() => { save(); onBack(); }}
+                    className="w-full py-3.5 rounded-2xl border-2 text-base font-medium hover:bg-gray-50 transition-colors">
+                    Volver al bloque
+                  </button>
+                )}
+                {phase === 'learn' && nextExercise && (
                   <button onClick={() => onNavigate(nextExercise.slug)}
                     className="w-full py-3.5 rounded-2xl border-2 text-base font-medium hover:bg-gray-50 transition-colors">
                     Siguiente: {nextExercise.title}

@@ -270,3 +270,24 @@ export const SCREENS: Record<string, Screen[]> = {
 export function getScreens(slug: string): Screen[] | null {
   return SCREENS[slug] ?? null;
 }
+
+// Generate practice screens dynamically from exercise data
+export function buildPracticeScreens(exercise: {
+  title: string;
+  pattern: string;
+  commonMistakes: string[];
+  exampleInput: string;
+  exampleOutput: string;
+}): Screen[] {
+  const mistake = exercise.commonMistakes[0] || '';
+  const quizQuestion = mistake.toLowerCase().includes('olvidar') || mistake.toLowerCase().includes('no ')
+    ? mistake.replace(/^Olvidar /i, '¿Hace falta ').replace(/^No /i, '¿Hay que ') + '?'
+    : `¿Recuerdas la trampa? "${mistake.slice(0, 70)}${mistake.length > 70 ? '...' : ''}"`;
+
+  return [
+    { type: 'intro', text: `Ahora t\u00fa solo.\nRecuerda: ${exercise.pattern.toLowerCase()}` },
+    { type: 'quiz', question: quizQuestion, options: ['S\u00ed', 'No'], correctIndex: 0, feedbackCorrect: 'Bien. Tenlo presente.', feedbackWrong: mistake },
+    { type: 'code', prompt: 'Escribe tu soluci\u00f3n.' },
+    { type: 'final', text: 'Buen trabajo.' },
+  ];
+}
