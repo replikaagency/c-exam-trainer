@@ -150,7 +150,7 @@ export const SCREENS: Record<string, Screen[]> = {
     { type: 'intro', text: 'Calcular el valor de una resistencia\na partir de los colores de sus bandas.' },
     { type: 'concept', text: 'Cada color tiene un n\u00famero del 0 al 9.\nUsamos switch para convertir la letra inicial al n\u00famero.' },
     { type: 'quiz', question: '\u00bfQu\u00e9 necesitas para no repetir el switch 3 veces?', options: ['Un bucle', 'Una funci\u00f3n'], correctIndex: 1, feedbackCorrect: 'Una funci\u00f3n que recibe la letra y devuelve el d\u00edgito.', feedbackWrong: 'Crear una funci\u00f3n evita copiar el mismo switch 3 veces.' },
-    { type: 'build', title: 'La funci\u00f3n', code: 'int colorADigito(char c) {\n    switch (c) {\n        case \'N\': return 0;\n        case \'M\': return 1;\n        ...\n        default: return -1;\n    }\n}', explanation: 'Devuelve -1 si el color no es v\u00e1lido.' },
+    { type: 'build', title: 'La funci\u00f3n', code: 'int colorADigito(char c) {\n    switch (c) {\n        case \'N\': return 0;\n        case \'M\': return 1;\n        case \'R\': return 2;\n        // ... hasta B=9\n        default: return -1;\n    }\n}', explanation: 'Un case por cada color. default = no v\u00e1lido.' },
     { type: 'build', title: 'Usar la funci\u00f3n', code: 'int d1 = colorADigito(c1);\nint d2 = colorADigito(c2);\nint valor = (d1 * 10 + d2) * mult;', explanation: 'Los dos d\u00edgitos forman un n\u00famero de 2 cifras.' },
     { type: 'final', text: 'Funciones + switch = c\u00f3digo limpio.\nEste ejercicio combina ambas cosas.' },
   ],
@@ -201,7 +201,7 @@ export const SCREENS: Record<string, Screen[]> = {
     { type: 'intro', text: 'Crear una funci\u00f3n que diga si un n\u00famero es v\u00e1lido.\nY usarla con do-while para repetir hasta acertar.' },
     { type: 'concept', text: 'do-while: ejecuta al menos una vez.\nRepite mientras la condici\u00f3n sea verdadera.' },
     { type: 'quiz', question: '\u00bfCu\u00e1l es la diferencia entre while y do-while?', options: ['Ninguna', 'do-while siempre ejecuta al menos una vez'], correctIndex: 1, feedbackCorrect: 'Exacto. Primero hace, luego comprueba.', feedbackWrong: 'while puede no ejecutarse nunca. do-while siempre al menos una vez.' },
-    { type: 'build', title: 'La funci\u00f3n', code: 'int esValido(float x) {\n    return (x >= 1.0f && x <= 100.0f) ? 1 : 0;\n}', explanation: 'Devuelve 1 si est\u00e1 en rango, 0 si no.' },
+    { type: 'build', title: 'La funci\u00f3n', code: 'int esValido(float x) {\n    if (x >= 1.0f && x <= 100.0f)\n        return 1;\n    return 0;\n}', explanation: 'Devuelve 1 si est\u00e1 en rango, 0 si no.' },
     { type: 'build', title: 'do-while con la funci\u00f3n', code: 'do {\n    scanf("%f", &x);\n} while (!esValido(x));', explanation: 'El ! invierte: repite mientras NO sea v\u00e1lido.' },
     { type: 'final', text: 'Funciones que devuelven 0 o 1 + do-while.\nPatr\u00f3n de validaci\u00f3n robusto.' },
   ],
@@ -236,7 +236,7 @@ export const SCREENS: Record<string, Screen[]> = {
     { type: 'intro', text: '\u00bfUn objeto cabe por un agujero?\nComparamos sus diagonales.' },
     { type: 'concept', text: 'Diagonal de un rect\u00e1ngulo = ra\u00edz de (lado\u00b2 + lado\u00b2).\nSi la diagonal del objeto \u2264 la del agujero, cabe.' },
     { type: 'quiz', question: '\u00bfC\u00f3mo se calcula la ra\u00edz cuadrada en C?', options: ['sqrt(x)', 'x^0.5', 'raiz(x)'], correctIndex: 0, feedbackCorrect: 'sqrtf() para floats. Necesitas #include <math.h>.', feedbackWrong: 'En C se usa sqrtf() de math.h.' },
-    { type: 'build', title: 'Comparar diagonales', code: 'float do = sqrtf(w*w + h*h);\nfloat da = sqrtf(W*W + H*H);\nif (do <= da) printf("CABE\\n");\nelse printf("NO CABE\\n");', explanation: 'Dos ra\u00edces, una comparaci\u00f3n.' },
+    { type: 'build', title: 'Comparar diagonales', code: 'float diag_obj = sqrtf(w*w + h*h);\nfloat diag_aguj = sqrtf(W*W + H*H);\nif (diag_obj <= diag_aguj)\n    printf("CABE\\n");\nelse\n    printf("NO CABE\\n");', explanation: 'Dos ra\u00edces, una comparaci\u00f3n.' },
     { type: 'final', text: 'sqrt + comparaci\u00f3n.\nGeometr\u00eda simple pero importante para examen.' },
   ],
 
@@ -250,7 +250,7 @@ export const SCREENS: Record<string, Screen[]> = {
 
   'raiz-cuarta': [
     { type: 'intro', text: 'Calcular la ra\u00edz cuarta de un n\u00famero\naproximando paso a paso, sin usar pow ni sqrt.' },
-    { type: 'concept', text: 'Primero buscas por unidades (1 en 1).\nLuego por d\u00e9cimas (0.1 en 0.1).\nLuego por cent\u00e9simas (0.01 en 0.01).' },
+    { type: 'concept', text: 'Buscas primero por unidades, luego por d\u00e9cimas, luego por cent\u00e9simas.\nCada paso afina m\u00e1s el resultado.' },
     { type: 'quiz', question: '\u00bfPor qu\u00e9 no empezar directamente por cent\u00e9simas?', options: ['Porque tardar\u00eda much\u00edsimo', 'Porque es m\u00e1s f\u00e1cil'], correctIndex: 0, feedbackCorrect: 'Ir de 0 a 100 de 0.01 en 0.01 = 10.000 pasos. Mejor por fases.', feedbackWrong: 'De 0.01 en 0.01 ser\u00edan miles de pasos. Por fases es mucho m\u00e1s r\u00e1pido.' },
     { type: 'build', title: '3 while encadenados', code: 'while ((x+1)*(x+1)*(x+1)*(x+1) <= n)\n    x += 1.0f;\nwhile ((x+0.1f)*(x+0.1f)*(x+0.1f)*(x+0.1f) <= n)\n    x += 0.1f;\nwhile ((x+0.01f)*(x+0.01f)*(x+0.01f)*(x+0.01f) <= n)\n    x += 0.01f;', explanation: 'Cada while avanza desde donde par\u00f3 el anterior.' },
     { type: 'final', text: 'Aproximaci\u00f3n sucesiva: grueso \u2192 fino \u2192 m\u00e1s fino.\nEjercicios tipo PR7.' },
