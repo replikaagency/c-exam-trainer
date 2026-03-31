@@ -5,6 +5,7 @@ import { getExercise, getExercisesByBlock } from '@/lib/exercises';
 import { BLOCKS } from '@/lib/blocks';
 import { EXERCISES } from '@/lib/exercises';
 import { getProgress, updateProgress, getAllProgress, type Understanding } from '@/lib/progress';
+import { getScreens, type Screen } from '@/lib/screens';
 import type { Exercise } from '@/lib/types';
 import type { Phase } from '@/app/page';
 
@@ -25,7 +26,143 @@ interface Props {
 export function ExerciseView({ slug, phase, onBack, onNavigate, onChangePhase }: Props) {
   const exercise = getExercise(slug);
   if (!exercise) return <div className="p-16 text-center text-muted-foreground">Ejercicio no encontrado.</div>;
+
+  // Use micro-learning screens in Learn phase if available
+  const screens = phase === 'learn' ? getScreens(slug) : null;
+  if (screens) {
+    return <ScreenFlow exercise={exercise} screens={screens} onBack={onBack} onNavigate={onNavigate} onChangePhase={onChangePhase} />;
+  }
+
   return <StepFlow exercise={exercise} phase={phase} onBack={onBack} onNavigate={onNavigate} onChangePhase={onChangePhase} />;
+}
+
+// ════════════════════════════════════════════════
+// SCREEN FLOW (micro-learning, one screen at a time)
+// ════════════════════════════════════════════════
+
+function ScreenFlow({ exercise, screens, onBack, onNavigate, onChangePhase }: {
+  exercise: Exercise; screens: Screen[]; onBack: () => void; onNavigate: (slug: string) => void; onChangePhase: (phase: Phase) => void;
+}) {
+  const blockExercises = getExercisesByBlock(exercise.blockId);
+  const currentIndex = blockExercises.findIndex(e => e.slug === exercise.slug);
+  const nextExercise = currentIndex < blockExercises.length - 1 ? blockExercises[currentIndex + 1] : null;
+
+  const [idx, setIdx] = useState(0);
+  const [quizPicked, setQuizPicked] = useState<number | null>(null);
+
+  useEffect(() => { setIdx(0); setQuizPicked(null); }, [exercise.slug]);
+
+  const screen = screens[idx];
+  const total = screens.length;
+  const advance = () => { setQuizPicked(null); setIdx(i => Math.min(i + 1, total - 1)); };
+
+  return (
+    <div className="flex flex-col flex-1 items-center min-h-dvh px-5 py-6">
+      <div className="w-full max-w-md flex flex-col flex-1">
+
+        {/* Top */}
+        <div className="flex items-center justify-between mb-1">
+          <button onClick={onBack} className="text-sm text-gray-400 hover:text-foreground">← Salir</button>
+          <span className="text-xs text-gray-400">{idx + 1} / {total}</span>
+        </div>
+
+        {/* Progress */}
+        <div className="h-2 bg-gray-200 rounded-full mb-10 overflow-hidden">
+          <div className="h-full bg-emerald-500 rounded-full transition-all duration-500 ease-out" style={{ width: `${((idx + 1) / total) * 100}%` }} />
+        </div>
+
+        {/* Screen */}
+        <div className="flex-1 flex flex-col justify-center">
+
+          {screen.type === 'intro' && (
+            <div>
+              <h1 className="text-2xl font-bold mb-4">{exercise.title}</h1>
+              <p className="text-lg text-gray-600 leading-relaxed whitespace-pre-line mb-8">{screen.text}</p>
+              <Btn onClick={advance}>Empezar</Btn>
+            </div>
+          )}
+
+          {screen.type === 'concept' && (
+            <div>
+              <p className="text-lg leading-relaxed whitespace-pre-line mb-8">{screen.text}</p>
+              <Btn onClick={advance}>Entendido</Btn>
+            </div>
+          )}
+
+          {screen.type === 'quiz' && (
+            <div>
+              <p className="text-lg font-medium mb-6">{screen.question}</p>
+              <div className="space-y-2 mb-4">
+                {screen.options.map((opt, i) => {
+                  const picked = quizPicked !== null;
+                  const isCorrect = i === screen.correctIndex;
+                  const isThis = i === quizPicked;
+                  let style = 'border-2 border-gray-200 hover:border-gray-400';
+                  if (picked && isCorrect) style = 'border-2 border-emerald-400 bg-emerald-50';
+                  if (picked && isThis && !isCorrect) style = 'border-2 border-amber-400 bg-amber-50';
+                  return (
+                    <button key={i} onClick={() => { if (!picked) setQuizPicked(i); }}
+                      disabled={picked}
+                      className={`w-full text-left px-5 py-4 rounded-2xl text-base transition-colors ${style}`}>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+              {quizPicked !== null && (
+                <div className={`rounded-2xl p-4 mb-4 ${quizPicked === screen.correctIndex ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+                  <p className={`text-base font-medium ${quizPicked === screen.correctIndex ? 'text-emerald-800' : 'text-amber-800'}`}>
+                    {quizPicked === screen.correctIndex ? screen.feedbackCorrect : screen.feedbackWrong}
+                  </p>
+                </div>
+              )}
+              {quizPicked !== null && <Btn onClick={advance}>Seguir</Btn>}
+            </div>
+          )}
+
+          {screen.type === 'build' && (
+            <div>
+              <p className="text-sm text-gray-400 mb-2">{screen.title}</p>
+              <pre className="bg-zinc-900 text-zinc-100 rounded-2xl p-4 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-3">{screen.code}</pre>
+              <p className="text-base text-gray-600 mb-8">{screen.explanation}</p>
+              <Btn onClick={advance}>Seguir</Btn>
+            </div>
+          )}
+
+          {screen.type === 'code' && (
+            <div>
+              <p className="text-lg mb-4">{screen.prompt}</p>
+              <Btn onClick={advance}>Seguir</Btn>
+            </div>
+          )}
+
+          {screen.type === 'final' && (
+            <div className="text-center">
+              <p className="text-4xl mb-4">✓</p>
+              <p className="text-lg leading-relaxed whitespace-pre-line mb-8">{screen.text}</p>
+              <div className="space-y-3">
+                <Btn onClick={() => onChangePhase('practice')}>Ahora a practicar</Btn>
+                {nextExercise && (
+                  <button onClick={() => onNavigate(nextExercise.slug)}
+                    className="w-full py-3.5 rounded-2xl border-2 text-base font-medium hover:bg-gray-50 transition-colors">
+                    Siguiente: {nextExercise.title}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Back step */}
+        {idx > 0 && screen.type !== 'final' && (
+          <div className="flex justify-center pt-4">
+            <button onClick={() => { setQuizPicked(null); setIdx(i => i - 1); }}
+              className="text-sm text-gray-400 hover:text-foreground">← Paso anterior</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exercise: Exercise; phase: Phase; onBack: () => void; onNavigate: (slug: string) => void; onChangePhase: (phase: Phase) => void }) {
