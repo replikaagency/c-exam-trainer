@@ -16,8 +16,8 @@ export const SCREENS: Record<string, Screen[]> = {
     { type: 'concept', text: 'Cada tipo de dato tiene su letra:\n%s para texto, %d para n\u00fameros enteros, %f para decimales.' },
     { type: 'quiz', question: '\u00bfQu\u00e9 letra se usa para leer un n\u00famero entero?', options: ['%s', '%d', '%f'], correctIndex: 1, feedbackCorrect: 'Eso es. %d para enteros.', feedbackWrong: '%d es para enteros. %s es texto, %f es decimal.' },
     { type: 'build', title: 'Paso 1: declarar variables', code: 'char nombre[50];\nint edad;\nfloat altura;', explanation: 'Una variable por cada dato que necesitas.' },
-    { type: 'build', title: 'Paso 2: leer los datos', code: 'scanf("%s %d %f", nombre, &edad, &altura);', explanation: 'nombre no lleva & porque es un array. El resto s\u00ed.' },
-    { type: 'quiz', question: '\u00bfPor qu\u00e9 nombre no lleva & en scanf?', options: ['Porque es texto', 'Porque ya es una direcci\u00f3n de memoria'], correctIndex: 1, feedbackCorrect: 'Exacto. Los arrays ya son direcciones.', feedbackWrong: 'Es porque los arrays de char ya apuntan a la memoria.' },
+    { type: 'build', title: 'Paso 2: leer los datos', code: 'scanf("%s %d %f", nombre, &edad, &altura);', explanation: 'nombre va sin &. edad y altura s\u00ed llevan &.' },
+    { type: 'quiz', question: 'En scanf, \u00bfnombre lleva & delante?', options: ['S\u00ed, como el resto', 'No, nombre va sin &'], correctIndex: 1, feedbackCorrect: 'Eso es. Las cadenas de texto van sin &.', feedbackWrong: 'Las cadenas (char[]) van sin &. Solo int y float lo necesitan.' },
     { type: 'build', title: 'Paso 3: mostrar resultados', code: 'printf("Nombre: %s\\n", nombre);\nprintf("Edad: %d\\n", edad);\nprintf("Altura: %.2f m\\n", altura);', explanation: '%.2f muestra 2 decimales.' },
     { type: 'final', text: 'Ya sabes leer datos y mostrarlos.\nEsto es la base de todo lo que viene.' },
   ],
@@ -26,7 +26,7 @@ export const SCREENS: Record<string, Screen[]> = {
     { type: 'intro', text: 'Un programa que decide qu\u00e9 hacer\nseg\u00fan el valor que recibe.' },
     { type: 'concept', text: 'Usamos if / else if / else.\nEl programa va comprobando hasta que una condici\u00f3n se cumple.' },
     { type: 'concept', text: 'El truco: comprobar primero lo m\u00e1s espec\u00edfico.\nSi no, los casos generales se "tragan" los espec\u00edficos.' },
-    { type: 'quiz', question: 'Si compruebas "< 90" antes de "== 90", \u00bfqu\u00e9 pasa con el 90?', options: ['Entra en el caso correcto', 'Nunca llega a comprobarse == 90'], correctIndex: 1, feedbackCorrect: 'Exacto. Por eso el orden importa.', feedbackWrong: '90 no es < 90, as\u00ed que s\u00ed funcionar\u00eda. Pero 0 < 90 y 0 es un eje, no un cuadrante.' },
+    { type: 'quiz', question: '\u00bfQu\u00e9 hay que comprobar primero: los ejes exactos o los rangos?', options: ['Los rangos', 'Los ejes exactos'], correctIndex: 1, feedbackCorrect: 'Eso es. Primero lo espec\u00edfico, luego lo general.', feedbackWrong: 'Si pones rangos primero, los valores exactos nunca se comprueban.' },
     { type: 'build', title: 'Primero: validar', code: 'if (angulo < 0 || angulo > 360) {\n    printf("ERROR\\n");\n}', explanation: 'Siempre valida antes de hacer nada.' },
     { type: 'build', title: 'Luego: ejes exactos', code: 'else if (angulo == 0 || angulo == 360)\n    printf("Eje X positivo\\n");\nelse if (angulo == 90)\n    printf("Eje Y positivo\\n");', explanation: 'Los valores exactos van ANTES que los rangos.' },
     { type: 'build', title: 'Por \u00faltimo: cuadrantes', code: 'else if (angulo < 90)\n    printf("Cuadrante I\\n");\nelse if (angulo < 180)\n    printf("Cuadrante II\\n");', explanation: 'Como ya descartamos los ejes, estos rangos funcionan.' },
@@ -37,8 +37,9 @@ export const SCREENS: Record<string, Screen[]> = {
     { type: 'intro', text: 'Un programa que aplica una f\u00f3rmula.\nLee datos, calcula y muestra el resultado.' },
     { type: 'concept', text: 'La f\u00f3rmula es: a = \u03c9\u00b2 \u00d7 r\nEn C no existe ^. Para elevar al cuadrado: omega * omega.' },
     { type: 'quiz', question: '\u00bfC\u00f3mo se escribe omega al cuadrado en C?', options: ['omega^2', 'omega * omega', 'pow(omega, 2)'], correctIndex: 1, feedbackCorrect: 'Eso es. Multiplicar por s\u00ed mismo.', feedbackWrong: 'En C, ^ es otra cosa (XOR). Usa omega * omega.' },
-    { type: 'build', title: 'El programa completo', code: 'float omega, radio, a;\nscanf("%f %f", &omega, &radio);\na = omega * omega * radio;\nprintf("Aceleracion: %.2f m/s2\\n", a);', explanation: '3 l\u00edneas: leer, calcular, mostrar.' },
-    { type: 'final', text: 'Ya sabes aplicar f\u00f3rmulas.\nLeer \u2192 calcular \u2192 mostrar. Siempre igual.' },
+    { type: 'build', title: 'Leer los datos', code: 'float omega, radio, a;\nscanf("%f %f", &omega, &radio);', explanation: 'Dos n\u00fameros con decimales. Ambos llevan &.' },
+    { type: 'build', title: 'Calcular y mostrar', code: 'a = omega * omega * radio;\nprintf("Aceleracion: %.2f m/s2\\n", a);', explanation: 'omega * omega es omega al cuadrado.' },
+    { type: 'final', text: 'Leer \u2192 calcular \u2192 mostrar.\nEste patr\u00f3n se repite en casi todo.' },
   ],
 
   'calificacion': [
@@ -88,7 +89,7 @@ export const SCREENS: Record<string, Screen[]> = {
 
   'eleva-signo': [
     { type: 'intro', text: 'Calcular (-1) elevado a n.\nSin usar pow. Solo pensando.' },
-    { type: 'concept', text: 'Si n es par: resultado es 1.\nSi n es impar: resultado es -1.\nNo necesitas calcular nada m\u00e1s.' },
+    { type: 'concept', text: 'Par \u2192 resultado 1.\nImpar \u2192 resultado -1.' },
     { type: 'quiz', question: '(-1) elevado a 4 = ?', options: ['1', '-1'], correctIndex: 0, feedbackCorrect: 'Par \u2192 1. Siempre.', feedbackWrong: '4 es par. Par \u2192 positivo.' },
     { type: 'build', title: 'Todo el programa', code: 'if (n % 2 == 0) {\n    printf("1\\n");\n} else {\n    printf("-1\\n");\n}', explanation: 'n % 2 == 0 comprueba si n es par.' },
     { type: 'final', text: 'A veces la soluci\u00f3n es pensar, no calcular.\nEsto sale mucho en ex\u00e1menes.' },
@@ -105,7 +106,7 @@ export const SCREENS: Record<string, Screen[]> = {
   'media-desviacion': [
     { type: 'intro', text: 'Leer n\u00fameros hasta que llegue un -99.\nCalcular media y desviaci\u00f3n.' },
     { type: 'concept', text: 'Centinela: un valor especial que dice "ya no hay m\u00e1s".\nAqu\u00ed el centinela es -99.' },
-    { type: 'concept', text: 'Necesitas dos acumuladores:\nsuma (para la media) y suma de cuadrados (para la desviaci\u00f3n).' },
+    { type: 'concept', text: 'Necesitas guardar dos totales:\nla suma de todos los n\u00fameros, y la suma de cada n\u00famero multiplicado por s\u00ed mismo.' },
     { type: 'quiz', question: '\u00bfEl centinela (-99) se cuenta en la media?', options: ['S\u00ed', 'No'], correctIndex: 1, feedbackCorrect: 'Nunca. El centinela solo marca el final.', feedbackWrong: 'El centinela no es un dato. Solo indica el fin.' },
     { type: 'build', title: 'Patr\u00f3n centinela', code: 'scanf("%f", &x);\nwhile (x != -99.0f) {\n    suma += x;\n    sumaCuad += x * x;\n    n++;\n    scanf("%f", &x);\n}', explanation: 'Leer antes del while Y al final del while.' },
     { type: 'build', title: 'Calcular desviaci\u00f3n', code: 'media = suma / n;\ndesv = sqrtf(sumaCuad/n - media*media);', explanation: 'F\u00f3rmula: ra\u00edz de (media de cuadrados - cuadrado de media).' },

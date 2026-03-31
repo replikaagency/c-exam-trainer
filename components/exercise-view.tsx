@@ -111,7 +111,10 @@ function ScreenFlow({ exercise, screens, onBack, onNavigate, onChangePhase }: {
               </div>
               {quizPicked !== null && (
                 <div className={`rounded-2xl p-4 mb-4 ${quizPicked === screen.correctIndex ? 'bg-emerald-50' : 'bg-amber-50'}`}>
-                  <p className={`text-base font-medium ${quizPicked === screen.correctIndex ? 'text-emerald-800' : 'text-amber-800'}`}>
+                  {quizPicked === screen.correctIndex && (
+                    <p className="text-emerald-600 text-sm font-medium mb-1">{randomEncouragement()}</p>
+                  )}
+                  <p className={`text-base ${quizPicked === screen.correctIndex ? 'text-emerald-800' : 'text-amber-800'}`}>
                     {quizPicked === screen.correctIndex ? screen.feedbackCorrect : screen.feedbackWrong}
                   </p>
                 </div>
