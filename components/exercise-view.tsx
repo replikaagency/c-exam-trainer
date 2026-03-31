@@ -451,21 +451,21 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
   }, [currentStep, attemptText, phase]);
 
   return (
-    <div className="flex flex-col flex-1 items-center min-h-dvh px-4 py-6">
+    <div className="flex flex-col flex-1 items-center min-h-dvh px-5 py-6">
       <div className="w-full max-w-md flex flex-col flex-1">
 
         {/* Top bar */}
         <div className="flex items-center justify-between mb-1">
-          <button onClick={handleBack} className="text-sm text-muted-foreground hover:text-foreground">← Salir</button>
+          <button onClick={handleBack} className="text-sm text-gray-400 hover:text-foreground">← Salir</button>
           <div className="flex items-center gap-3">
-            {phase !== 'learn' && <span className="text-xs font-mono text-muted-foreground">{formatTime(seconds)}</span>}
-            <span className="text-xs text-muted-foreground">{globalDone}/{EXERCISES.length}</span>
+            <span className="text-xs font-mono text-gray-400">{formatTime(seconds)}</span>
+            <span className="text-xs text-gray-400">{globalDone}/{EXERCISES.length}</span>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="h-2 bg-muted rounded-full mb-8 overflow-hidden">
-          <div className={`h-full ${PHASE_COLOR[phase]} transition-all duration-500 ease-out`} style={{ width: `${((step + 1) / totalSteps) * 100}%` }} />
+        <div className="h-2 bg-gray-200 rounded-full mb-8 overflow-hidden">
+          <div className={`h-full ${PHASE_COLOR[phase]} rounded-full transition-all duration-500 ease-out`} style={{ width: `${((step + 1) / totalSteps) * 100}%` }} />
         </div>
 
         {/* Step content */}
@@ -473,16 +473,9 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
 
           {currentStep === 'intro' && (
             <Step>
-              <p className="text-xs text-muted-foreground mb-3">{block?.title}</p>
-              <h1 className="text-2xl font-bold mb-6">{exercise.title}</h1>
-              <div className="flex gap-1 mb-6">
-                {(['learn', 'practice', 'test'] as Phase[]).map(p => (
-                  <button key={p} onClick={() => onChangePhase(p)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${p === phase ? PHASE_COLOR[p] + ' text-white border-transparent' : 'text-muted-foreground hover:bg-muted'}`}>
-                    {PHASE_LABEL[p]}
-                  </button>
-                ))}
-              </div>
+              <p className="text-xs text-gray-400 mb-3">{block?.title}</p>
+              <h1 className="text-2xl font-bold mb-2">{exercise.title}</h1>
+              <p className="text-base text-gray-500 mb-6">Modo examen. Sin ayudas, con timer.</p>
               <Btn onClick={advance}>Empezar</Btn>
             </Step>
           )}
@@ -499,9 +492,9 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
             <Step>
               <Label>Ejemplo</Label>
               <p className="text-sm text-muted-foreground mb-1">Le das:</p>
-              <pre className="bg-muted rounded-xl p-3 font-mono text-sm mb-4">{exercise.exampleInput}</pre>
+              <pre className="bg-muted rounded-2xl p-3 font-mono text-sm mb-4">{exercise.exampleInput}</pre>
               <p className="text-sm text-muted-foreground mb-1">Y muestra:</p>
-              <pre className="bg-muted rounded-xl p-3 font-mono text-sm mb-6">{exercise.exampleOutput}</pre>
+              <pre className="bg-muted rounded-2xl p-3 font-mono text-sm mb-6">{exercise.exampleOutput}</pre>
               <Btn onClick={advance}>Vale</Btn>
             </Step>
           )}
@@ -514,12 +507,12 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
                 <p className="text-base leading-relaxed mb-8">{quiz.question}</p>
                 {quizAnswer === null ? (
                   <div className="flex gap-3">
-                    <button onClick={() => setQuizAnswer(true)} className="flex-1 py-4 rounded-xl border-2 text-base font-medium hover:bg-emerald-50 hover:border-emerald-300 transition-colors">Sí</button>
-                    <button onClick={() => setQuizAnswer(false)} className="flex-1 py-4 rounded-xl border-2 text-base font-medium hover:bg-red-50 hover:border-red-300 transition-colors">No</button>
+                    <button onClick={() => setQuizAnswer(true)} className="flex-1 py-4 rounded-2xl border-2 text-base font-medium hover:bg-emerald-50 hover:border-emerald-300 transition-colors">Sí</button>
+                    <button onClick={() => setQuizAnswer(false)} className="flex-1 py-4 rounded-2xl border-2 text-base font-medium hover:bg-red-50 hover:border-red-300 transition-colors">No</button>
                   </div>
                 ) : (
                   <>
-                    <div className={`rounded-xl p-4 mb-6 ${quizAnswer === quiz.correctAnswer ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
+                    <div className={`rounded-2xl p-4 mb-6 ${quizAnswer === quiz.correctAnswer ? 'bg-emerald-50 border border-emerald-200' : 'bg-amber-50 border border-amber-200'}`}>
                       <p className={`text-base font-medium ${quizAnswer === quiz.correctAnswer ? 'text-emerald-800' : 'text-amber-800'}`}>
                         {quizAnswer === quiz.correctAnswer ? randomEncouragement() : 'Fíjate:'}
                       </p>
@@ -545,7 +538,7 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
                 ))}
               </ol>
               {exercise.commonMistakes.length > 0 && (
-                <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-6">
+                <div className="bg-orange-50 border border-orange-200 rounded-2xl p-3 mb-6">
                   <p className="text-xs font-medium text-orange-700 mb-1">Ojo</p>
                   <p className="text-sm text-orange-800">{exercise.commonMistakes[0]}</p>
                 </div>
@@ -559,12 +552,12 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
             <Step>
               <Label>La solución completa</Label>
               {usefulHints.length > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-3">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-3">
                   <p className="text-sm whitespace-pre-wrap">{usefulHints[0].content}</p>
                 </div>
               )}
-              <pre className="bg-muted rounded-xl p-3 text-xs font-mono whitespace-pre-wrap overflow-x-auto mb-3">{exercise.pseudocode}</pre>
-              <pre className="bg-zinc-900 text-zinc-100 rounded-xl p-3 text-xs font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
+              <pre className="bg-muted rounded-2xl p-3 text-xs font-mono whitespace-pre-wrap overflow-x-auto mb-3">{exercise.pseudocode}</pre>
+              <pre className="bg-zinc-900 text-zinc-100 rounded-2xl p-3 text-xs font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
               <Btn onClick={advance}>Seguir</Btn>
             </Step>
           )}
@@ -574,9 +567,9 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
               <Label>{phase === 'test' ? 'A por ello' : 'Tu turno'}</Label>
               <textarea value={attemptText} onChange={e => handleAttemptChange(e.target.value)}
                 placeholder={"#include <stdio.h>\n\nint main() {\n    \n    return 0;\n}"}
-                className="w-full h-52 bg-card border-2 rounded-xl p-3 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-3" spellCheck={false} />
+                className="w-full h-52 bg-card border-2 rounded-2xl p-3 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-3" spellCheck={false} />
               {showStuckHint && !attemptText.trim() && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mb-3">
+                <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3 mb-3">
                   <p className="text-sm text-indigo-800 mb-2">Sin prisa. ¿Te echo una mano?</p>
                   <button onClick={() => { setShowStuckHint(false); advance(); }} className="text-sm text-indigo-700 font-medium hover:underline">Sí, ayúdame</button>
                 </div>
@@ -591,16 +584,16 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
             <Step>
               <Label>¿Te echo una mano?</Label>
               <div className="space-y-2 mb-4">
-                <button onClick={() => requestAI('explain')} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">No lo pillo</button>
-                <button onClick={() => requestAI('start')} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">No sé por dónde empezar</button>
-                {attemptText.trim() && <button onClick={() => requestAI('review')} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">Mira lo que llevo</button>}
-                {hintsRevealed < usefulHints.length && <button onClick={revealHint} className="w-full text-left px-4 py-4 border-2 rounded-xl text-base hover:bg-amber-50 hover:border-amber-200 transition-colors">Dame una pista</button>}
+                <button onClick={() => requestAI('explain')} className="w-full text-left px-4 py-4 border-2 rounded-2xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">No lo pillo</button>
+                <button onClick={() => requestAI('start')} className="w-full text-left px-4 py-4 border-2 rounded-2xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">No sé por dónde empezar</button>
+                {attemptText.trim() && <button onClick={() => requestAI('review')} className="w-full text-left px-4 py-4 border-2 rounded-2xl text-base hover:bg-indigo-50 hover:border-indigo-200 transition-colors">Mira lo que llevo</button>}
+                {hintsRevealed < usefulHints.length && <button onClick={revealHint} className="w-full text-left px-4 py-4 border-2 rounded-2xl text-base hover:bg-amber-50 hover:border-amber-200 transition-colors">Dame una pista</button>}
               </div>
               {aiLoading && <p className="text-sm text-indigo-600 animate-pulse mb-3">Pensando...</p>}
               {aiError && <p className="text-sm text-red-600 mb-3">{aiError}</p>}
-              {aiExplanation && <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-sm mb-3 whitespace-pre-wrap">{aiExplanation}</div>}
+              {aiExplanation && <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3 text-sm mb-3 whitespace-pre-wrap">{aiExplanation}</div>}
               {hintsRevealed > 0 && usefulHints.slice(0, hintsRevealed).map((h, i) => (
-                <div key={i} className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm mb-2 whitespace-pre-wrap">{h.content}</div>
+                <div key={i} className="bg-amber-50 border border-amber-200 rounded-2xl p-3 text-sm mb-2 whitespace-pre-wrap">{h.content}</div>
               ))}
               <Btn onClick={advance}>Seguir</Btn>
             </Step>
@@ -613,13 +606,13 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
                   <Label>¿Quieres ver la solución?</Label>
                   <div className="flex gap-2">
                     <Btn onClick={() => revealSolution()}>Sí, verla</Btn>
-                    <button onClick={goBack} className="flex-1 py-3.5 rounded-xl border-2 text-sm font-medium hover:bg-muted transition-colors">Volver a intentar</button>
+                    <button onClick={goBack} className="flex-1 py-3.5 rounded-2xl border-2 text-sm font-medium hover:bg-muted transition-colors">Volver a intentar</button>
                   </div>
                 </>
               ) : (
                 <>
                   <Label>Solución</Label>
-                  <pre className="bg-zinc-900 text-zinc-100 rounded-xl p-3 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
+                  <pre className="bg-zinc-900 text-zinc-100 rounded-2xl p-3 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
                   <Btn onClick={advance}>Seguir</Btn>
                 </>
               )}
@@ -631,7 +624,7 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
               <Label>¿Por qué lo has hecho así?</Label>
               <textarea value={justification} onChange={e => setJustification(e.target.value)}
                 placeholder="He usado un for porque..."
-                className="w-full h-28 bg-card border-2 rounded-xl p-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-4" spellCheck={false} />
+                className="w-full h-28 bg-card border-2 rounded-2xl p-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-4" spellCheck={false} />
               <Btn onClick={advance} disabled={!justification.trim()}>
                 {justification.trim() ? 'Evaluar' : 'Escribe algo'}
               </Btn>
@@ -644,12 +637,12 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
               {!aiExplanation && !aiLoading && !aiError && (
                 <div className="space-y-2 mb-4">
                   <Btn onClick={() => requestAI('review', { userAttempt: `CÓDIGO:\n${attemptText}\n\nJUSTIFICACIÓN:\n${justification}` })}>Evaluar mi respuesta</Btn>
-                  <button onClick={() => requestAI('exam_explain', { justification: justification.trim() })} className="w-full py-3.5 rounded-xl border-2 text-sm font-medium hover:bg-muted transition-colors">¿Cómo lo explicaría en el examen?</button>
+                  <button onClick={() => requestAI('exam_explain', { justification: justification.trim() })} className="w-full py-3.5 rounded-2xl border-2 text-sm font-medium hover:bg-muted transition-colors">¿Cómo lo explicaría en el examen?</button>
                 </div>
               )}
               {aiLoading && <p className="text-sm text-purple-600 animate-pulse mb-4">Revisando...</p>}
               {aiError && <p className="text-sm text-red-600 mb-4">{aiError}</p>}
-              {aiExplanation && <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-sm whitespace-pre-wrap mb-4">{aiExplanation}</div>}
+              {aiExplanation && <div className="bg-purple-50 border border-purple-200 rounded-2xl p-4 text-sm whitespace-pre-wrap mb-4">{aiExplanation}</div>}
               {(aiExplanation || aiError) && <Btn onClick={advance}>Seguir</Btn>}
             </Step>
           )}
@@ -661,7 +654,7 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
                 <Btn onClick={revealSolution}>Ver solución</Btn>
               ) : (
                 <>
-                  <pre className="bg-zinc-900 text-zinc-100 rounded-xl p-3 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
+                  <pre className="bg-zinc-900 text-zinc-100 rounded-2xl p-3 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-6">{exercise.solutionCode}</pre>
                   <Btn onClick={advance}>Seguir</Btn>
                 </>
               )}
@@ -693,7 +686,7 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
                             updateProgress(exercise.slug, { status: 'dominated', lastAttempt: new Date().toISOString() });
                           }
                         }}
-                        className={`flex flex-col items-center gap-1 px-5 py-3 rounded-xl border-2 transition-colors ${understanding === opt.value ? 'bg-muted border-foreground/20' : 'hover:bg-muted/50'}`}>
+                        className={`flex flex-col items-center gap-1 px-5 py-3 rounded-2xl border-2 transition-colors ${understanding === opt.value ? 'bg-muted border-foreground/20' : 'hover:bg-muted/50'}`}>
                         <span className="text-2xl">{opt.emoji}</span>
                         <span className="text-xs">{opt.label}</span>
                       </button>
@@ -741,7 +734,7 @@ function Label({ children }: { children: React.ReactNode }) {
 function Btn({ children, onClick, disabled, className }: { children: React.ReactNode; onClick?: () => void; disabled?: boolean; className?: string }) {
   return (
     <button onClick={onClick} disabled={disabled}
-      className={`w-full py-3.5 rounded-xl font-medium text-base transition-colors ${disabled ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-foreground text-background hover:bg-foreground/90'} ${className ?? ''}`}>
+      className={`w-full py-3.5 rounded-2xl font-medium text-base transition-colors ${disabled ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-foreground text-background hover:bg-foreground/90'} ${className ?? ''}`}>
       {children}
     </button>
   );
