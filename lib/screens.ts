@@ -121,6 +121,150 @@ export const SCREENS: Record<string, Screen[]> = {
     { type: 'final', text: 'switch + break + default.\nEste patr\u00f3n es de examen seguro.' },
   ],
 
+  'tanque': [
+    { type: 'intro', text: 'Calcular el volumen de un cilindro.\nPero primero hay que comprobar que los datos tienen sentido.' },
+    { type: 'concept', text: 'V = \u03c0 \u00d7 r\u00b2 \u00d7 h\nSi r o h son negativos o cero, no tiene sentido f\u00edsico.' },
+    { type: 'quiz', question: '\u00bfHay que comprobar los dos valores (r y h)?', options: ['Solo uno', 'Los dos'], correctIndex: 1, feedbackCorrect: 'Eso es. Si cualquiera es inv\u00e1lido, no se calcula.', feedbackWrong: 'Ambos deben ser positivos. Basta que uno falle.' },
+    { type: 'build', title: 'Validar con ||', code: 'if (r <= 0.0f || h <= 0.0f) {\n    printf("ERROR\\n");\n}', explanation: '|| significa "o". Si alguno falla, es error.' },
+    { type: 'build', title: 'Calcular', code: 'V = 3.14159f * r * r * h;\nprintf("Volumen: %.2f\\n", V);', explanation: 'r\u00b2 = r * r. No existe ^ en C.' },
+    { type: 'final', text: 'Validar m\u00faltiples datos con ||.\nMismo patr\u00f3n que corriente, pero con dos comprobaciones.' },
+  ],
+
+  'doble-par': [
+    { type: 'intro', text: 'Clasificar un n\u00famero:\n\u00bfes doble par, par o impar?' },
+    { type: 'concept', text: 'Doble par = divisible por 4.\nPar = divisible por 2 pero no por 4.' },
+    { type: 'quiz', question: '\u00bfQu\u00e9 hay que comprobar primero: %4 o %2?', options: ['%2', '%4'], correctIndex: 1, feedbackCorrect: 'Primero lo m\u00e1s espec\u00edfico (%4).', feedbackWrong: 'Si pones %2 primero, el 12 entra como "par" y nunca llega a "doble par".' },
+    { type: 'build', title: 'El orden correcto', code: 'if (n % 4 == 0) printf("Doble par\\n");\nelse if (n % 2 == 0) printf("Par\\n");\nelse printf("Impar\\n");', explanation: 'else if evita que entre en dos casos.' },
+    { type: 'final', text: 'Cuando clasificas: comprueba primero lo m\u00e1s restrictivo.' },
+  ],
+
+  'resistencias': [
+    { type: 'intro', text: 'Calcular resistencias en serie y en paralelo.\nDos f\u00f3rmulas distintas con los mismos datos.' },
+    { type: 'concept', text: 'Serie: se suman. R1 + R2.\nParalelo: (R1 \u00d7 R2) / (R1 + R2).' },
+    { type: 'quiz', question: 'Si R1=4 y R2=6, \u00bfcu\u00e1nto es la serie?', options: ['10', '24', '2.4'], correctIndex: 0, feedbackCorrect: 'Serie es suma directa.', feedbackWrong: 'Serie = R1 + R2 = 10.' },
+    { type: 'build', title: 'Dos c\u00e1lculos', code: 'serie = R1 + R2;\nparalelo = (R1 * R2) / (R1 + R2);', explanation: 'El paralelo usa producto entre suma.' },
+    { type: 'final', text: 'Un programa puede calcular varias cosas\ncon los mismos datos.' },
+  ],
+
+  'resistencias-colores': [
+    { type: 'intro', text: 'Calcular el valor de una resistencia\na partir de los colores de sus bandas.' },
+    { type: 'concept', text: 'Cada color tiene un n\u00famero del 0 al 9.\nUsamos switch para convertir la letra inicial al n\u00famero.' },
+    { type: 'quiz', question: '\u00bfQu\u00e9 necesitas para no repetir el switch 3 veces?', options: ['Un bucle', 'Una funci\u00f3n'], correctIndex: 1, feedbackCorrect: 'Una funci\u00f3n que recibe la letra y devuelve el d\u00edgito.', feedbackWrong: 'Crear una funci\u00f3n evita copiar el mismo switch 3 veces.' },
+    { type: 'build', title: 'La funci\u00f3n', code: 'int colorADigito(char c) {\n    switch (c) {\n        case \'N\': return 0;\n        case \'M\': return 1;\n        ...\n        default: return -1;\n    }\n}', explanation: 'Devuelve -1 si el color no es v\u00e1lido.' },
+    { type: 'build', title: 'Usar la funci\u00f3n', code: 'int d1 = colorADigito(c1);\nint d2 = colorADigito(c2);\nint valor = (d1 * 10 + d2) * mult;', explanation: 'Los dos d\u00edgitos forman un n\u00famero de 2 cifras.' },
+    { type: 'final', text: 'Funciones + switch = c\u00f3digo limpio.\nEste ejercicio combina ambas cosas.' },
+  ],
+
+  'triangulo-numerico': [
+    { type: 'intro', text: 'Dibujar un tri\u00e1ngulo de n\u00fameros.\nLos n\u00fameros siguen de fila en fila.' },
+    { type: 'concept', text: 'La diferencia con asteriscos:\naqu\u00ed el contador NO se reinicia en cada fila.' },
+    { type: 'quiz', question: 'Si la fila 1 tiene el 1 y la fila 2 tiene 2,3...\n\u00bfcon qu\u00e9 n\u00famero empieza la fila 3?', options: ['1', '3', '4'], correctIndex: 2, feedbackCorrect: 'Sigue donde par\u00f3: 1, luego 2-3, luego 4-5-6.', feedbackWrong: 'El contador es global: 1 | 2,3 | 4,5,6 | ...' },
+    { type: 'build', title: 'Contador global', code: 'int num = 1;\nfor (i = 1; i <= n; i++) {\n    for (j = 1; j <= i; j++) {\n        printf("%4d", num);\n        num++;\n    }\n    printf("\\n");\n}', explanation: 'num se declara FUERA y nunca se reinicia.' },
+    { type: 'final', text: 'Contador global + for anidado.\n%4d alinea los n\u00fameros con ancho fijo.' },
+  ],
+
+  'contador-rangos': [
+    { type: 'intro', text: 'Leer n\u00fameros y contar\ncu\u00e1ntos son negativos, cero o positivos.' },
+    { type: 'concept', text: 'Necesitas 3 contadores.\nCada uno empieza en 0, antes del bucle.' },
+    { type: 'quiz', question: '\u00bfD\u00f3nde se inicializan los contadores?', options: ['Dentro del for', 'Antes del for'], correctIndex: 1, feedbackCorrect: 'Siempre antes. Si los pones dentro, se resetean en cada vuelta.', feedbackWrong: 'Dentro del for se resetear\u00edan a 0 en cada iteraci\u00f3n.' },
+    { type: 'build', title: 'Leer y clasificar', code: 'for (i = 0; i < n; i++) {\n    scanf("%d", &x);\n    if (x < 0) neg++;\n    else if (x == 0) cero++;\n    else pos++;\n}', explanation: 'else if evita contar el mismo n\u00famero dos veces.' },
+    { type: 'final', text: 'Contadores + for + else if.\nPatr\u00f3n muy com\u00fan en ejercicios de examen.' },
+  ],
+
+  'suma-acumulada': [
+    { type: 'intro', text: 'Sumar n\u00fameros hasta que llegue un -1.\nY calcular la media.' },
+    { type: 'concept', text: 'El -1 no se suma. Solo marca el final.\nEsto se llama centinela.' },
+    { type: 'quiz', question: '\u00bfD\u00f3nde se lee el siguiente n\u00famero?', options: ['Solo antes del while', 'Antes Y al final del while'], correctIndex: 1, feedbackCorrect: 'Exacto. Si no lees al final, bucle infinito.', feedbackWrong: 'Hay que leer antes del while (la primera vez) y al final (para las siguientes).' },
+    { type: 'build', title: 'El patr\u00f3n', code: 'scanf("%d", &x);\nwhile (x != -1) {\n    suma += x;\n    cont++;\n    scanf("%d", &x);\n}', explanation: 'Dos scanf: uno antes, otro al final del while.' },
+    { type: 'final', text: 'Centinela: leer \u2192 while \u2192 procesar \u2192 leer de nuevo.' },
+  ],
+
+  'insertar-centro': [
+    { type: 'intro', text: 'Insertar un d\u00edgito en el centro de un n\u00famero.\nEjemplo: 1234 con d\u00edgito 5 \u2192 12534.' },
+    { type: 'concept', text: 'Primero: contar cu\u00e1ntas cifras tiene el n\u00famero.\nDividir entre 10 repetidamente hasta llegar a 0.' },
+    { type: 'quiz', question: '\u00bfC\u00f3mo se separa un n\u00famero en "parte alta" y "parte baja"?', options: ['Con + y -', 'Con / y %'], correctIndex: 1, feedbackCorrect: '/ te da la parte alta, % te da la parte baja.', feedbackWrong: 'Divisi\u00f3n entera (/) da la parte alta. M\u00f3dulo (%) da la parte baja.' },
+    { type: 'build', title: 'Contar cifras', code: 'tmp = num;\nwhile (tmp > 0) {\n    cifras++;\n    tmp /= 10;\n}', explanation: 'Divide entre 10 hasta que quede 0.' },
+    { type: 'build', title: 'Reconstruir', code: 'parte_baja = num % potencia;\nparte_alta = num / potencia;\nresultado = parte_alta * potencia * 10\n           + digito * potencia\n           + parte_baja;', explanation: 'El \u00d710 extra hace hueco para el d\u00edgito nuevo.' },
+    { type: 'final', text: 'Manipular cifras: /, % y potencias de 10.\nEjercicio dif\u00edcil pero muy de examen.' },
+  ],
+
+  'funciones-geometria': [
+    { type: 'intro', text: 'Crear tu propia funci\u00f3n.\nRecibe datos, calcula y devuelve el resultado.' },
+    { type: 'concept', text: 'Una funci\u00f3n tiene 3 partes:\n1) tipo de retorno, 2) par\u00e1metros, 3) return.' },
+    { type: 'quiz', question: '\u00bfLa funci\u00f3n debe imprimir el resultado?', options: ['S\u00ed, con printf', 'No, debe hacer return'], correctIndex: 1, feedbackCorrect: 'La funci\u00f3n calcula y retorna. main imprime.', feedbackWrong: 'Las funciones devuelven valores con return. printf va en main.' },
+    { type: 'build', title: 'Definir la funci\u00f3n', code: 'float areaRectangulo(float base, float altura) {\n    return base * altura;\n}', explanation: 'Recibe dos floats, devuelve un float.' },
+    { type: 'build', title: 'Llamarla desde main', code: 'area = areaRectangulo(base, altura);\nprintf("Area: %.2f\\n", area);', explanation: 'main llama a la funci\u00f3n y muestra lo que devuelve.' },
+    { type: 'final', text: 'Funciones: calcular y devolver.\nmain: leer, llamar e imprimir.' },
+  ],
+
+  'funcion-validar-rango': [
+    { type: 'intro', text: 'Crear una funci\u00f3n que diga si un n\u00famero es v\u00e1lido.\nY usarla con do-while para repetir hasta acertar.' },
+    { type: 'concept', text: 'do-while: ejecuta al menos una vez.\nRepite mientras la condici\u00f3n sea verdadera.' },
+    { type: 'quiz', question: '\u00bfCu\u00e1l es la diferencia entre while y do-while?', options: ['Ninguna', 'do-while siempre ejecuta al menos una vez'], correctIndex: 1, feedbackCorrect: 'Exacto. Primero hace, luego comprueba.', feedbackWrong: 'while puede no ejecutarse nunca. do-while siempre al menos una vez.' },
+    { type: 'build', title: 'La funci\u00f3n', code: 'int esValido(float x) {\n    return (x >= 1.0f && x <= 100.0f) ? 1 : 0;\n}', explanation: 'Devuelve 1 si est\u00e1 en rango, 0 si no.' },
+    { type: 'build', title: 'do-while con la funci\u00f3n', code: 'do {\n    scanf("%f", &x);\n} while (!esValido(x));', explanation: 'El ! invierte: repite mientras NO sea v\u00e1lido.' },
+    { type: 'final', text: 'Funciones que devuelven 0 o 1 + do-while.\nPatr\u00f3n de validaci\u00f3n robusto.' },
+  ],
+
+  'estadisticas-array': [
+    { type: 'intro', text: 'Guardar muchos n\u00fameros y calcular\nm\u00ednimo, m\u00e1ximo y media.' },
+    { type: 'concept', text: 'Un array guarda varios valores bajo un nombre.\na[0], a[1], a[2]... se accede con el \u00edndice.' },
+    { type: 'quiz', question: '\u00bfCon qu\u00e9 valor inicializas el m\u00ednimo?', options: ['Con 0', 'Con el primer elemento del array'], correctIndex: 1, feedbackCorrect: 'Siempre con a[0]. Si pones 0, puedes equivocarte.', feedbackWrong: 'Si todos son negativos y pones min=0, nunca se actualizar\u00e1.' },
+    { type: 'build', title: 'Leer en array', code: 'int a[n];\nfor (i = 0; i < n; i++)\n    scanf("%d", &a[i]);', explanation: 'Un scanf por cada posici\u00f3n del array.' },
+    { type: 'build', title: 'Recorrer y calcular', code: 'int min = a[0], max = a[0], suma = 0;\nfor (i = 0; i < n; i++) {\n    if (a[i] < min) min = a[i];\n    if (a[i] > max) max = a[i];\n    suma += a[i];\n}', explanation: 'Un solo for para las tres operaciones.' },
+    { type: 'final', text: 'Arrays: guardar, recorrer y calcular.\nBase de muchos problemas.' },
+  ],
+
+  'velocidad-media': [
+    { type: 'intro', text: 'Calcular la velocidad media de un recorrido\ncon varios tramos.' },
+    { type: 'concept', text: 'Velocidad media = distancia total / tiempo total.\nNO es la media de las velocidades de cada tramo.' },
+    { type: 'quiz', question: 'Si haces 100km en 1h y 100km en 2h,\n\u00bfla velocidad media es 75 km/h o 66.7 km/h?', options: ['75 km/h', '66.7 km/h'], correctIndex: 1, feedbackCorrect: '200km / 3h = 66.7. No es la media de 100 y 50.', feedbackWrong: 'Distancia total (200) / tiempo total (3) = 66.7 km/h.' },
+    { type: 'build', title: 'Acumular totales', code: 'for (i = 0; i < n; i++) {\n    scanf("%f %f", &dist, &tiempo);\n    distTotal += dist;\n    timeTotal += tiempo;\n}', explanation: 'No guardes cada tramo. Solo acumula.' },
+    { type: 'final', text: 'Velocidad media \u2260 media de velocidades.\nTrampa cl\u00e1sica de examen.' },
+  ],
+
+  'cuatro-cuadrados': [
+    { type: 'intro', text: 'Encontrar todas las formas de escribir un n\u00famero\ncomo suma de 4 cuadrados.' },
+    { type: 'concept', text: 'Usamos 3 bucles for (a, b, c).\nEl cuarto valor (d) se calcula directamente.' },
+    { type: 'concept', text: 'Para no repetir combinaciones:\nb empieza en a, c empieza en b, d debe ser \u2265 c.' },
+    { type: 'quiz', question: '\u00bfPor qu\u00e9 b empieza en a y no en 0?', options: ['Para ir m\u00e1s r\u00e1pido', 'Para no repetir combinaciones'], correctIndex: 1, feedbackCorrect: 'Si a=1,b=0 y a=0,b=1 son lo mismo. Evitamos duplicados.', feedbackWrong: 'Sin esa restricci\u00f3n, 0,1 y 1,0 ser\u00edan dos resultados iguales.' },
+    { type: 'build', title: 'Los 3 for', code: 'for (a = 0; a*a <= n; a++)\n  for (b = a; a*a+b*b <= n; b++)\n    for (c = b; a*a+b*b+c*c <= n; c++) {\n      resto = n - a*a - b*b - c*c;\n      d = (int)(sqrtf(resto) + 0.5f);\n      if (d*d == resto && d >= c)\n        printf("%d %d %d %d\\n", a,b,c,d);\n    }', explanation: 'd se calcula, no se busca. Eso ahorra un bucle entero.' },
+    { type: 'final', text: 'B\u00fasqueda con simetr\u00eda + c\u00e1lculo directo.\nEl ejercicio m\u00e1s dif\u00edcil del bloque.' },
+  ],
+
+  'cabe-agujero': [
+    { type: 'intro', text: '\u00bfUn objeto cabe por un agujero?\nComparamos sus diagonales.' },
+    { type: 'concept', text: 'Diagonal de un rect\u00e1ngulo = ra\u00edz de (lado\u00b2 + lado\u00b2).\nSi la diagonal del objeto \u2264 la del agujero, cabe.' },
+    { type: 'quiz', question: '\u00bfC\u00f3mo se calcula la ra\u00edz cuadrada en C?', options: ['sqrt(x)', 'x^0.5', 'raiz(x)'], correctIndex: 0, feedbackCorrect: 'sqrtf() para floats. Necesitas #include <math.h>.', feedbackWrong: 'En C se usa sqrtf() de math.h.' },
+    { type: 'build', title: 'Comparar diagonales', code: 'float do = sqrtf(w*w + h*h);\nfloat da = sqrtf(W*W + H*H);\nif (do <= da) printf("CABE\\n");\nelse printf("NO CABE\\n");', explanation: 'Dos ra\u00edces, una comparaci\u00f3n.' },
+    { type: 'final', text: 'sqrt + comparaci\u00f3n.\nGeometr\u00eda simple pero importante para examen.' },
+  ],
+
+  'polares': [
+    { type: 'intro', text: 'Convertir coordenadas (x, y) a polares (r, \u00e1ngulo).\nUsa atan2 que maneja todos los cuadrantes.' },
+    { type: 'concept', text: 'atan2(y, x) devuelve el \u00e1ngulo en radianes.\nPara pasar a grados: multiplicar por 180/\u03c0.' },
+    { type: 'quiz', question: 'atan2 recibe (y, x). \u00bfQu\u00e9 va primero?', options: ['x', 'y'], correctIndex: 1, feedbackCorrect: 'Primero y, luego x. Al rev\u00e9s de lo que esperas.', feedbackWrong: 'atan2(y, x). Primero la y.' },
+    { type: 'build', title: 'El c\u00e1lculo completo', code: 'r = sqrtf(x*x + y*y);\ntheta = atan2f(y, x) * (180.0f / M_PI);\nif (theta < 0) theta += 360.0f;', explanation: 'Si el \u00e1ngulo sale negativo, se le suma 360.' },
+    { type: 'final', text: 'atan2 simplifica mucho.\nSin \u00e9l habr\u00eda que tratar cada cuadrante por separado.' },
+  ],
+
+  'raiz-cuarta': [
+    { type: 'intro', text: 'Calcular la ra\u00edz cuarta de un n\u00famero\naproximando paso a paso, sin usar pow ni sqrt.' },
+    { type: 'concept', text: 'Primero buscas por unidades (1 en 1).\nLuego por d\u00e9cimas (0.1 en 0.1).\nLuego por cent\u00e9simas (0.01 en 0.01).' },
+    { type: 'quiz', question: '\u00bfPor qu\u00e9 no empezar directamente por cent\u00e9simas?', options: ['Porque tardar\u00eda much\u00edsimo', 'Porque es m\u00e1s f\u00e1cil'], correctIndex: 0, feedbackCorrect: 'Ir de 0 a 100 de 0.01 en 0.01 = 10.000 pasos. Mejor por fases.', feedbackWrong: 'De 0.01 en 0.01 ser\u00edan miles de pasos. Por fases es mucho m\u00e1s r\u00e1pido.' },
+    { type: 'build', title: '3 while encadenados', code: 'while ((x+1)*(x+1)*(x+1)*(x+1) <= n)\n    x += 1.0f;\nwhile ((x+0.1f)*(x+0.1f)*(x+0.1f)*(x+0.1f) <= n)\n    x += 0.1f;\nwhile ((x+0.01f)*(x+0.01f)*(x+0.01f)*(x+0.01f) <= n)\n    x += 0.01f;', explanation: 'Cada while avanza desde donde par\u00f3 el anterior.' },
+    { type: 'final', text: 'Aproximaci\u00f3n sucesiva: grueso \u2192 fino \u2192 m\u00e1s fino.\nEjercicios tipo PR7.' },
+  ],
+
+  'centroide-poligono': [
+    { type: 'intro', text: 'Calcular el centro de un pol\u00edgono\ndados sus v\u00e9rtices. Usa la f\u00f3rmula de Shoelace.' },
+    { type: 'concept', text: 'Necesitas cerrar el pol\u00edgono:\nel \u00faltimo punto conecta con el primero.' },
+    { type: 'quiz', question: 'Si tienes n v\u00e9rtices, \u00bfcu\u00e1ntos lados tiene el pol\u00edgono?', options: ['n-1', 'n'], correctIndex: 1, feedbackCorrect: 'n lados. El \u00faltimo conecta con el primero.', feedbackWrong: 'El lado que cierra el pol\u00edgono cuenta. Son n lados.' },
+    { type: 'build', title: 'Cerrar y acumular', code: 'x[n] = x[0]; y[n] = y[0];\nfor (i = 0; i < n; i++) {\n    float cross = x[i]*y[i+1] - x[i+1]*y[i];\n    area += cross;\n    sumX += (x[i]+x[i+1]) * cross;\n    sumY += (y[i]+y[i+1]) * cross;\n}', explanation: 'cross es el producto cruzado de cada arista.' },
+    { type: 'build', title: 'Calcular centroide', code: 'area = fabsf(area) / 2.0f;\nCx = sumX / (6 * area);\nCy = sumY / (6 * area);', explanation: 'El 6 en el denominador es parte de la f\u00f3rmula.' },
+    { type: 'final', text: 'El ejercicio m\u00e1s completo de todos.\nArrays + bucle + f\u00f3rmula + cerrar pol\u00edgono.' },
+  ],
+
 };
 
 export function getScreens(slug: string): Screen[] | null {
