@@ -287,7 +287,7 @@ export interface PracticeData {
 
 export const PRACTICE_DATA: Record<string, PracticeData> = {
   'datos-personales': {
-    fillCode: '#include <stdio.h>\n\nint main() {\n    char nombre[50];\n    int edad;\n    float altura;\n    scanf("___ ___ ___", nombre, ___edad, ___altura);\n    printf("Nombre: ___\\n", nombre);\n    printf("Edad: ___\\n", edad);\n    printf("Altura: ___ m\\n", altura);\n    return 0;\n}',
+    fillCode: '#include <stdio.h>\n\nint main() {\n    char nombre[50];\n    int edad;\n    float altura;\n    scanf("___ ___ ___", nombre, ___ edad, ___ altura);\n    printf("Nombre: ___\\n", nombre);\n    printf("Edad: ___\\n", edad);\n    printf("Altura: ___ m\\n", altura);\n    return 0;\n}',
     fillAnswers: ['%s', '%d', '%f', '&', '&', '%s', '%d', '%.2f'],
     ghostCode: '#include <stdio.h>\n\nint main() {\n    char nombre[50];\n    int edad;\n    float altura;\n    scanf("%s %d %f", nombre, &edad, &altura);\n    printf("Nombre: %s\\n", nombre);\n    printf("Edad: %d\\n", edad);\n    printf("Altura: %.2f m\\n", altura);\n    return 0;\n}',
     starterCode: '#include <stdio.h>\n\nint main() {\n    // declara las variables\n\n    // lee los datos con scanf\n\n    // muestra los datos con printf\n\n    return 0;\n}',
@@ -323,23 +323,45 @@ function autoFill(code: string): { codeWithGaps: string; answers: string[] } {
   const answers: string[] = [];
   let result = code;
 
-  // Replace format specifiers: %d, %f, %s, %.2f, %.1f etc.
-  result = result.replace(/%(\.\d+)?[dfs]/g, (match) => {
+  // 1. Replace format specifiers inside printf/scanf strings: %d, %f, %s, %.2f etc.
+  //    These appear as %" or %\\ in escaped strings
+  result = result.replace(/%(\.?\d*)[dfs]/g, (match) => {
     answers.push(match);
     return '___';
   });
 
-  // Replace comparison operators in if conditions
-  result = result.replace(/(\s)(<=|>=|!=|==)(\s)/g, (_, pre, op, post) => {
-    if (answers.length < 12) { answers.push(op); return `${pre}___${post}`; }
-    return _;
+  // 2. Replace comparison operators: <=, >=, !=, ==
+  result = result.replace(/(\s)(<=|>=|!=|==)(\s)/g, (full, pre, op, post) => {
+    if (answers.length < 14) { answers.push(op); return `${pre}___${post}`; }
+    return full;
   });
 
-  // Replace && and ||
-  result = result.replace(/(\s)(\|\||&&)(\s)/g, (_, pre, op, post) => {
-    if (answers.length < 14) { answers.push(op); return `${pre}___${post}`; }
-    return _;
+  // 3. Replace && and ||
+  result = result.replace(/(\s)(\|\||&&)(\s)/g, (full, pre, op, post) => {
+    if (answers.length < 16) { answers.push(op); return `${pre}___${post}`; }
+    return full;
   });
+
+  // 4. Replace modulo operator (n % 2, n % 4, etc.) — NOT printf format specifiers
+  //    Modulo appears as: variable_or_number SPACE % SPACE number
+  result = result.replace(/(\w)\s%\s(\d+)/g, (full, before, num) => {
+    if (answers.length < 16) { answers.push(`% ${num}`); return `${before} ___ `; }
+    return full;
+  });
+
+  // 5. Replace += and -= operators
+  result = result.replace(/(\s)(\+=|-=)(\s)/g, (full, pre, op, post) => {
+    if (answers.length < 18) { answers.push(op); return `${pre}___${post}`; }
+    return full;
+  });
+
+  // If too few gaps (< 2), also replace the first return value or key number
+  if (answers.length < 2) {
+    result = result.replace(/return (\d+);/, (full, val) => {
+      answers.push(val);
+      return 'return ___;';
+    });
+  }
 
   return { codeWithGaps: result, answers };
 }

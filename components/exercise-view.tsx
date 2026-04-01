@@ -247,9 +247,16 @@ function ScreenFlow({ exercise, screens, phase, onBack, onNavigate, onChangePhas
           {screen.type === 'fill' && (
             <div>
               <Label>{screen.title}</Label>
-              <p className="text-sm text-gray-500 mb-3">Rellena cada ___ con el valor correcto.</p>
+              <p className="text-base text-gray-500 mb-3">Cada ___ es un hueco. Las piezas estan abajo.</p>
               <pre className="bg-zinc-900 text-zinc-100 rounded-2xl p-4 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-4">{screen.codeWithGaps}</pre>
-              <p className="text-xs text-gray-400 mb-4">Respuestas: {screen.answers.join(' · ')}</p>
+              <div className="mb-4">
+                <p className="text-xs text-gray-400 mb-2">Piezas (en orden):</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {screen.answers.map((a, i) => (
+                    <span key={i} className="inline-block px-2.5 py-1 bg-gray-100 rounded-lg text-sm font-mono">{a}</span>
+                  ))}
+                </div>
+              </div>
               <Btn onClick={advance}>Seguir</Btn>
             </div>
           )}
