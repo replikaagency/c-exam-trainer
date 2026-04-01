@@ -13,6 +13,20 @@ const PHASE_LABEL: Record<Phase, string> = { learn: 'Aprender', practice: 'Pract
 const PHASE_COLOR: Record<Phase, string> = { learn: 'bg-emerald-500', practice: 'bg-blue-500', test: 'bg-purple-500' };
 
 const ENCOURAGEMENTS = ['Bien visto.', 'Eso es.', 'Vas bien.', 'Correcto.', 'Exacto.'];
+
+const FILL_HINTS: Record<string, string> = {
+  '%d': 'entero', '%f': 'decimal', '%s': 'texto',
+  '%.1f': '1 decimal', '%.2f': '2 decimales', '%.3f': '3 decimales',
+  '&': 'guardar aqui', '==': 'comparar', '!=': 'distinto',
+  '<=': 'menor o igual', '>=': 'mayor o igual',
+  '||': 'o', '&&': 'y',
+  '%': 'resto', '% 2': 'par?', '% 4': 'doble par?', '% 360': 'ajustar',
+  '+=': 'sumar a', '-=': 'restar a',
+  '/': 'dividir', '*': 'multiplicar',
+  'else': 'si no', 'define': 'constante',
+  '<': 'menor', '>': 'mayor',
+  '1': 'inicio', '0': 'cero',
+};
 const randomEncouragement = () => ENCOURAGEMENTS[Math.floor(Math.random() * ENCOURAGEMENTS.length)];
 
 interface Props {
@@ -252,9 +266,15 @@ function ScreenFlow({ exercise, screens, phase, onBack, onNavigate, onChangePhas
               <div className="mb-4">
                 <p className="text-xs text-gray-400 mb-2">Piezas (en orden):</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {screen.answers.map((a, i) => (
-                    <span key={i} className="inline-block px-2.5 py-1 bg-gray-100 rounded-lg text-sm font-mono">{a}</span>
-                  ))}
+                  {screen.answers.map((a, i) => {
+                    const hint = FILL_HINTS[a];
+                    return (
+                      <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 rounded-lg text-sm">
+                        <span className="font-mono">{a}</span>
+                        {hint && <span className="text-gray-400 text-xs">{hint}</span>}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
               <Btn onClick={advance}>Seguir</Btn>

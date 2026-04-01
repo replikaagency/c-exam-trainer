@@ -319,39 +319,39 @@ export const PRACTICE_DATA: Record<string, PracticeData> = {
 };
 
 // Auto-generate fill code from solution: replace key patterns with ___
-function autoFill(code: string): { codeWithGaps: string; answers: string[] } {
+// maxGaps prevents overwhelming the user on complex exercises
+function autoFill(code: string, maxGaps = 8): { codeWithGaps: string; answers: string[] } {
   const answers: string[] = [];
   let result = code;
+  const canAdd = () => answers.length < maxGaps;
 
-  // 1. Replace format specifiers inside printf/scanf strings: %d, %f, %s, %.2f etc.
-  //    These appear as %" or %\\ in escaped strings
+  // 1. Format specifiers: %d, %f, %s, %.2f etc.
   result = result.replace(/%(\.?\d*)[dfs]/g, (match) => {
-    answers.push(match);
-    return '___';
+    if (canAdd()) { answers.push(match); return '___'; }
+    return match;
   });
 
-  // 2. Replace comparison operators: <=, >=, !=, ==
+  // 2. Comparison operators: <=, >=, !=, ==
   result = result.replace(/(\s)(<=|>=|!=|==)(\s)/g, (full, pre, op, post) => {
-    if (answers.length < 14) { answers.push(op); return `${pre}___${post}`; }
+    if (canAdd()) { answers.push(op); return `${pre}___${post}`; }
     return full;
   });
 
-  // 3. Replace && and ||
+  // 3. && and ||
   result = result.replace(/(\s)(\|\||&&)(\s)/g, (full, pre, op, post) => {
-    if (answers.length < 16) { answers.push(op); return `${pre}___${post}`; }
+    if (canAdd()) { answers.push(op); return `${pre}___${post}`; }
     return full;
   });
 
-  // 4. Replace modulo operator (n % 2, n % 4, etc.) — NOT printf format specifiers
-  //    Modulo appears as: variable_or_number SPACE % SPACE number
+  // 4. Modulo operator (n % 2, not printf %d)
   result = result.replace(/(\w)\s%\s(\d+)/g, (full, before, num) => {
-    if (answers.length < 16) { answers.push(`% ${num}`); return `${before} ___ `; }
+    if (canAdd()) { answers.push(`% ${num}`); return `${before} ___ `; }
     return full;
   });
 
-  // 5. Replace += and -= operators
+  // 5. += and -=
   result = result.replace(/(\s)(\+=|-=)(\s)/g, (full, pre, op, post) => {
-    if (answers.length < 18) { answers.push(op); return `${pre}___${post}`; }
+    if (canAdd()) { answers.push(op); return `${pre}___${post}`; }
     return full;
   });
 
