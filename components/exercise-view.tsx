@@ -5,7 +5,7 @@ import { getExercise, getExercisesByBlock } from '@/lib/exercises';
 import { BLOCKS } from '@/lib/blocks';
 import { EXERCISES } from '@/lib/exercises';
 import { getProgress, updateProgress, getAllProgress, type Understanding } from '@/lib/progress';
-import { getScreens, buildPracticeScreens, type Screen } from '@/lib/screens';
+import { getScreens, buildPracticeScreens, PRACTICE_DATA, type Screen, type PracticeLevel } from '@/lib/screens';
 import type { Exercise } from '@/lib/types';
 import type { Phase } from '@/app/page';
 
@@ -36,8 +36,7 @@ export function ExerciseView({ slug, phase, onBack, onNavigate, onChangePhase }:
   }
 
   if (phase === 'practice') {
-    const screens = buildPracticeScreens(exercise);
-    return <ScreenFlow exercise={exercise} screens={screens} phase={phase} onBack={onBack} onNavigate={onNavigate} onChangePhase={onChangePhase} />;
+    return <PracticeFlow exercise={exercise} onBack={onBack} onNavigate={onNavigate} onChangePhase={onChangePhase} />;
   }
 
   // Test mode uses StepFlow
@@ -245,6 +244,49 @@ function ScreenFlow({ exercise, screens, phase, onBack, onNavigate, onChangePhas
             </div>
           )}
 
+          {screen.type === 'fill' && (
+            <div>
+              <Label>{screen.title}</Label>
+              <p className="text-sm text-gray-500 mb-3">Rellena cada ___ con el valor correcto.</p>
+              <pre className="bg-zinc-900 text-zinc-100 rounded-2xl p-4 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-4">{screen.codeWithGaps}</pre>
+              <p className="text-xs text-gray-400 mb-4">Respuestas: {screen.answers.join(' · ')}</p>
+              <Btn onClick={advance}>Seguir</Btn>
+            </div>
+          )}
+
+          {screen.type === 'ghost' && (
+            <div>
+              <Label>{screen.title}</Label>
+              <p className="text-sm text-gray-500 mb-3">Copia este codigo escribiendolo tu. Aprende haciendolo.</p>
+              <pre className="bg-zinc-50 border-2 border-dashed border-zinc-300 text-zinc-400 rounded-2xl p-4 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-3">{screen.ghostCode}</pre>
+              <textarea value={attemptText} onChange={e => handleAttemptChange(e.target.value)}
+                placeholder="Escribe aqui tu version..."
+                className="w-full h-48 bg-card border-2 rounded-2xl p-3 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-3" spellCheck={false} />
+              <Btn onClick={advance} disabled={!attemptText.trim()}>
+                {attemptText.trim() ? 'Seguir' : 'Escribe algo primero'}
+              </Btn>
+            </div>
+          )}
+
+          {screen.type === 'partial' && (
+            <div>
+              <Label>{screen.title}</Label>
+              <p className="text-sm text-gray-500 mb-3">Te damos la estructura. Completa la logica.</p>
+              <textarea value={attemptText || screen.starterCode} onChange={e => handleAttemptChange(e.target.value)}
+                className="w-full h-56 bg-card border-2 rounded-2xl p-3 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-3" spellCheck={false} />
+              <Btn onClick={advance} disabled={!attemptText.trim() || attemptText === screen.starterCode}>
+                Seguir
+              </Btn>
+            </div>
+          )}
+
+          {screen.type === 'level-select' && (
+            <div>
+              <Label>Elige tu nivel</Label>
+              <Btn onClick={advance}>Seguir</Btn>
+            </div>
+          )}
+
           {screen.type === 'final' && (
             <div className="text-center">
               <p className="text-4xl mb-4">{phase === 'practice' ? '💪' : '✓'}</p>
@@ -308,6 +350,72 @@ function ScreenFlow({ exercise, screens, phase, onBack, onNavigate, onChangePhas
         )}
       </div>
     </div>
+  );
+}
+
+// ════════════════════════════════════════════════
+// PRACTICE FLOW (with level selection)
+// ════════════════════════════════════════════════
+
+function PracticeFlow({ exercise, onBack, onNavigate, onChangePhase }: {
+  exercise: Exercise; onBack: () => void; onNavigate: (slug: string) => void; onChangePhase: (phase: Phase) => void;
+}) {
+  const [level, setLevel] = useState<PracticeLevel | null>(null);
+  const hasLevels = !!PRACTICE_DATA[exercise.slug];
+
+  useEffect(() => { setLevel(null); }, [exercise.slug]);
+
+  // If no level selected, show selector
+  if (!level) {
+    return (
+      <div className="flex flex-col flex-1 items-center min-h-dvh px-5 py-6">
+        <div className="w-full max-w-md flex flex-col flex-1">
+          <div className="flex items-center justify-between mb-1">
+            <button onClick={onBack} className="text-sm text-gray-400 hover:text-foreground">← Salir</button>
+          </div>
+          <div className="h-2 bg-gray-200 rounded-full mb-10" />
+          <div className="flex-1 flex flex-col justify-center">
+            <h1 className="text-2xl font-bold mb-2">{exercise.title}</h1>
+            <p className="text-base text-gray-500 mb-6">Elige cuanta ayuda quieres</p>
+
+            <div className="space-y-2">
+              {hasLevels && (
+                <>
+                  <button onClick={() => setLevel(1)}
+                    className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                    <p className="font-medium text-base">Completar huecos</p>
+                    <p className="text-sm text-gray-500">El codigo esta casi hecho. Solo rellenas.</p>
+                  </button>
+                  <button onClick={() => setLevel(2)}
+                    className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-colors">
+                    <p className="font-medium text-base">Escribir con guia</p>
+                    <p className="text-sm text-gray-500">Ves la solucion de fondo. Escribes encima.</p>
+                  </button>
+                  <button onClick={() => setLevel(3)}
+                    className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-amber-50 hover:border-amber-200 transition-colors">
+                    <p className="font-medium text-base">Solo la estructura</p>
+                    <p className="text-sm text-gray-500">Te damos el esqueleto. Tu pones la logica.</p>
+                  </button>
+                </>
+              )}
+              <button onClick={() => setLevel(4)}
+                className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-purple-50 hover:border-purple-200 transition-colors">
+                <p className="font-medium text-base">Desde cero</p>
+                <p className="text-sm text-gray-500">Sin ayuda. Tu solo.</p>
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-400 text-center mt-4">Puedes probar cualquier nivel</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Build screens for selected level
+  const screens = buildPracticeScreens(exercise, level);
+  return (
+    <ScreenFlow exercise={exercise} screens={screens} phase="practice" onBack={() => setLevel(null)} onNavigate={onNavigate} onChangePhase={onChangePhase} />
   );
 }
 

@@ -5,7 +5,13 @@ export type Screen =
   | { type: 'quiz'; question: string; options: string[]; correctIndex: number; feedbackCorrect: string; feedbackWrong: string }
   | { type: 'build'; title: string; code: string; explanation: string }
   | { type: 'code'; prompt: string }
+  | { type: 'fill'; title: string; codeWithGaps: string; answers: string[] }
+  | { type: 'ghost'; title: string; ghostCode: string }
+  | { type: 'partial'; title: string; starterCode: string }
+  | { type: 'level-select' }
   | { type: 'final'; text: string };
+
+export type PracticeLevel = 1 | 2 | 3 | 4;
 
 // Screens per exercise slug (learn phase only)
 export const SCREENS: Record<string, Screen[]> = {
@@ -271,22 +277,91 @@ export function getScreens(slug: string): Screen[] | null {
   return SCREENS[slug] ?? null;
 }
 
-// Generate practice screens dynamically from exercise data
+// Practice data per exercise
+export interface PracticeData {
+  fillCode: string;      // level 1: code with ___ gaps
+  fillAnswers: string[]; // correct values for gaps
+  ghostCode: string;     // level 2: full solution as ghost
+  starterCode: string;   // level 3: partial structure
+}
+
+export const PRACTICE_DATA: Record<string, PracticeData> = {
+  'datos-personales': {
+    fillCode: '#include <stdio.h>\n\nint main() {\n    char nombre[50];\n    int edad;\n    float altura;\n    scanf("___ ___ ___", nombre, ___edad, ___altura);\n    printf("Nombre: ___\\n", nombre);\n    printf("Edad: ___\\n", edad);\n    printf("Altura: ___ m\\n", altura);\n    return 0;\n}',
+    fillAnswers: ['%s', '%d', '%f', '&', '&', '%s', '%d', '%.2f'],
+    ghostCode: '#include <stdio.h>\n\nint main() {\n    char nombre[50];\n    int edad;\n    float altura;\n    scanf("%s %d %f", nombre, &edad, &altura);\n    printf("Nombre: %s\\n", nombre);\n    printf("Edad: %d\\n", edad);\n    printf("Altura: %.2f m\\n", altura);\n    return 0;\n}',
+    starterCode: '#include <stdio.h>\n\nint main() {\n    // declara las variables\n\n    // lee los datos con scanf\n\n    // muestra los datos con printf\n\n    return 0;\n}',
+  },
+  'corriente': {
+    fillCode: '#include <stdio.h>\n\nint main() {\n    float V, R, I;\n    scanf("%f %f", &V, &R);\n    if (R ___ 0.0f) {\n        printf("ERROR\\n");\n    } ___ {\n        I = V ___ R;\n        printf("___ A\\n", I);\n    }\n    return 0;\n}',
+    fillAnswers: ['<=', 'else', '/', '%.2f'],
+    ghostCode: '#include <stdio.h>\n\nint main() {\n    float V, R, I;\n    scanf("%f %f", &V, &R);\n    if (R <= 0.0f) {\n        printf("ERROR\\n");\n    } else {\n        I = V / R;\n        printf("%.2f A\\n", I);\n    }\n    return 0;\n}',
+    starterCode: '#include <stdio.h>\n\nint main() {\n    float V, R, I;\n    scanf("%f %f", &V, &R);\n    // valida R antes de dividir\n\n    // calcula I = V / R\n\n    // muestra el resultado\n\n    return 0;\n}',
+  },
+  'patron-numeros': {
+    fillCode: '#include <stdio.h>\n\nint main() {\n    int n, i;\n    scanf("___", &n);\n    for (i = ___; i ___ n; i++) {\n        if (i ___ 2 == 0) {\n            printf("%d PAR\\n", i);\n        } else {\n            printf("___\\n", i);\n        }\n    }\n    return 0;\n}',
+    fillAnswers: ['%d', '1', '<=', '%', '%d'],
+    ghostCode: '#include <stdio.h>\n\nint main() {\n    int n, i;\n    scanf("%d", &n);\n    for (i = 1; i <= n; i++) {\n        if (i % 2 == 0) {\n            printf("%d PAR\\n", i);\n        } else {\n            printf("%d\\n", i);\n        }\n    }\n    return 0;\n}',
+    starterCode: '#include <stdio.h>\n\nint main() {\n    int n, i;\n    scanf("%d", &n);\n    for (/* completa el bucle */) {\n        // comprueba si i es par\n        // imprime con o sin PAR\n    }\n    return 0;\n}',
+  },
+  'cambio-divisas': {
+    fillCode: '#___ EUR_A_USD 1.08f\n#___ EUR_A_GBP 0.86f\n\n#include <stdio.h>\n\nint main() {\n    float euros;\n    scanf("___", &euros);\n    if (euros ___ 0.0f) {\n        printf("ERROR\\n");\n    } else {\n        printf("USD: ___\\n", euros ___ EUR_A_USD);\n    }\n    return 0;\n}',
+    fillAnswers: ['define', 'define', '%f', '<=', '%.2f', '*'],
+    ghostCode: '#define EUR_A_USD 1.08f\n#define EUR_A_GBP 0.86f\n#define EUR_A_JPY 162.50f\n\n#include <stdio.h>\n\nint main() {\n    float euros;\n    scanf("%f", &euros);\n    if (euros <= 0.0f) {\n        printf("ERROR\\n");\n    } else {\n        printf("USD: %.2f\\n", euros * EUR_A_USD);\n        printf("GBP: %.2f\\n", euros * EUR_A_GBP);\n        printf("JPY: %.2f\\n", euros * EUR_A_JPY);\n    }\n    return 0;\n}',
+    starterCode: '#define EUR_A_USD 1.08f\n// a\u00f1ade las otras constantes\n\n#include <stdio.h>\n\nint main() {\n    float euros;\n    // lee euros\n    // valida\n    // calcula y muestra\n    return 0;\n}',
+  },
+  'ajuste-grados': {
+    fillCode: '#include <stdio.h>\n\nint main() {\n    int angulo;\n    scanf("%d", &angulo);\n    while (angulo ___ 0) {\n        angulo ___ 360;\n    }\n    angulo = angulo ___ 360;\n    printf("%d\\n", angulo);\n    return 0;\n}',
+    fillAnswers: ['<', '+=', '%'],
+    ghostCode: '#include <stdio.h>\n\nint main() {\n    int angulo;\n    scanf("%d", &angulo);\n    while (angulo < 0) {\n        angulo += 360;\n    }\n    angulo = angulo % 360;\n    printf("%d\\n", angulo);\n    return 0;\n}',
+    starterCode: '#include <stdio.h>\n\nint main() {\n    int angulo;\n    scanf("%d", &angulo);\n    // corrige negativos con while\n\n    // aplica m\u00f3dulo\n\n    printf("%d\\n", angulo);\n    return 0;\n}',
+  },
+};
+
+// Build practice screens for a specific level
 export function buildPracticeScreens(exercise: {
+  slug: string;
   title: string;
   pattern: string;
   commonMistakes: string[];
-  exampleInput: string;
-  exampleOutput: string;
-}): Screen[] {
-  const mistake = exercise.commonMistakes[0] || '';
-  const quizQuestion = mistake.toLowerCase().includes('olvidar') || mistake.toLowerCase().includes('no ')
-    ? mistake.replace(/^Olvidar /i, '¿Hace falta ').replace(/^No /i, '¿Hay que ') + '?'
-    : `¿Recuerdas la trampa? "${mistake.slice(0, 70)}${mistake.length > 70 ? '...' : ''}"`;
+  solutionCode: string;
+}, level: PracticeLevel): Screen[] {
+  const data = PRACTICE_DATA[exercise.slug];
+  const intro: Screen = { type: 'intro', text: `Ahora t\u00fa.\nRecuerda: ${exercise.pattern.toLowerCase().slice(0, 60)}` };
 
+  if (data) {
+    switch (level) {
+      case 1:
+        return [
+          intro,
+          { type: 'fill', title: 'Completa los huecos', codeWithGaps: data.fillCode, answers: data.fillAnswers },
+          { type: 'final', text: 'Bien. Cada hueco que rellenas te acerca m\u00e1s.' },
+        ];
+      case 2:
+        return [
+          intro,
+          { type: 'ghost', title: 'Escribe sobre la gu\u00eda', ghostCode: data.ghostCode },
+          { type: 'final', text: 'Vas cogiendo soltura.' },
+        ];
+      case 3:
+        return [
+          intro,
+          { type: 'partial', title: 'Completa la l\u00f3gica', starterCode: data.starterCode },
+          { type: 'final', text: 'Cada vez necesitas menos ayuda.' },
+        ];
+      case 4:
+        return [
+          intro,
+          { type: 'code', prompt: 'Escr\u00edbelo desde cero.' },
+          { type: 'final', text: 'Lo has hecho t\u00fa solo.' },
+        ];
+    }
+  }
+
+  // Fallback for exercises without practice data
   return [
-    { type: 'intro', text: `Ahora t\u00fa solo.\nRecuerda: ${exercise.pattern.toLowerCase()}` },
-    { type: 'quiz', question: quizQuestion, options: ['S\u00ed', 'No'], correctIndex: 0, feedbackCorrect: 'Bien. Tenlo presente.', feedbackWrong: mistake },
+    { type: 'level-select' },
+    intro,
     { type: 'code', prompt: 'Escribe tu soluci\u00f3n.' },
     { type: 'final', text: 'Buen trabajo.' },
   ];
