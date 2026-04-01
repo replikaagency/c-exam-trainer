@@ -5,7 +5,7 @@ import { getExercise, getExercisesByBlock } from '@/lib/exercises';
 import { BLOCKS } from '@/lib/blocks';
 import { EXERCISES } from '@/lib/exercises';
 import { getProgress, updateProgress, getAllProgress, type Understanding } from '@/lib/progress';
-import { getScreens, buildPracticeScreens, PRACTICE_DATA, type Screen, type PracticeLevel } from '@/lib/screens';
+import { getScreens, buildPracticeScreens, type Screen, type PracticeLevel } from '@/lib/screens';
 import type { Exercise } from '@/lib/types';
 import type { Phase } from '@/app/page';
 
@@ -361,8 +361,6 @@ function PracticeFlow({ exercise, onBack, onNavigate, onChangePhase }: {
   exercise: Exercise; onBack: () => void; onNavigate: (slug: string) => void; onChangePhase: (phase: Phase) => void;
 }) {
   const [level, setLevel] = useState<PracticeLevel | null>(null);
-  const hasLevels = !!PRACTICE_DATA[exercise.slug];
-
   useEffect(() => { setLevel(null); }, [exercise.slug]);
 
   // If no level selected, show selector
@@ -379,25 +377,21 @@ function PracticeFlow({ exercise, onBack, onNavigate, onChangePhase }: {
             <p className="text-base text-gray-500 mb-6">Elige cuanta ayuda quieres</p>
 
             <div className="space-y-2">
-              {hasLevels && (
-                <>
-                  <button onClick={() => setLevel(1)}
-                    className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
-                    <p className="font-medium text-base">Completar huecos</p>
-                    <p className="text-sm text-gray-500">El codigo esta casi hecho. Solo rellenas.</p>
-                  </button>
-                  <button onClick={() => setLevel(2)}
-                    className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-colors">
-                    <p className="font-medium text-base">Escribir con guia</p>
-                    <p className="text-sm text-gray-500">Ves la solucion de fondo. Escribes encima.</p>
-                  </button>
-                  <button onClick={() => setLevel(3)}
-                    className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-amber-50 hover:border-amber-200 transition-colors">
-                    <p className="font-medium text-base">Solo la estructura</p>
-                    <p className="text-sm text-gray-500">Te damos el esqueleto. Tu pones la logica.</p>
-                  </button>
-                </>
-              )}
+              <button onClick={() => setLevel(1)}
+                className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
+                <p className="font-medium text-base">Completar huecos</p>
+                <p className="text-sm text-gray-500">El codigo esta casi hecho. Solo rellenas.</p>
+              </button>
+              <button onClick={() => setLevel(2)}
+                className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-colors">
+                <p className="font-medium text-base">Escribir con guia</p>
+                <p className="text-sm text-gray-500">Ves la solucion de fondo. Escribes encima.</p>
+              </button>
+              <button onClick={() => setLevel(3)}
+                className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-amber-50 hover:border-amber-200 transition-colors">
+                <p className="font-medium text-base">Solo la estructura</p>
+                <p className="text-sm text-gray-500">Te damos el esqueleto. Tu escribes el resto.</p>
+              </button>
               <button onClick={() => setLevel(4)}
                 className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-purple-50 hover:border-purple-200 transition-colors">
                 <p className="font-medium text-base">Desde cero</p>

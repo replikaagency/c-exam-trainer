@@ -318,6 +318,60 @@ export const PRACTICE_DATA: Record<string, PracticeData> = {
   },
 };
 
+// Auto-generate fill code from solution: replace key patterns with ___
+function autoFill(code: string): { codeWithGaps: string; answers: string[] } {
+  const answers: string[] = [];
+  let result = code;
+
+  // Replace format specifiers: %d, %f, %s, %.2f, %.1f etc.
+  result = result.replace(/%(\.\d+)?[dfs]/g, (match) => {
+    answers.push(match);
+    return '___';
+  });
+
+  // Replace comparison operators in if conditions
+  result = result.replace(/(\s)(<=|>=|!=|==)(\s)/g, (_, pre, op, post) => {
+    if (answers.length < 12) { answers.push(op); return `${pre}___${post}`; }
+    return _;
+  });
+
+  // Replace && and ||
+  result = result.replace(/(\s)(\|\||&&)(\s)/g, (_, pre, op, post) => {
+    if (answers.length < 14) { answers.push(op); return `${pre}___${post}`; }
+    return _;
+  });
+
+  return { codeWithGaps: result, answers };
+}
+
+// Auto-generate starter code: keep structure, replace body with comments
+function autoStarter(code: string): string {
+  const lines = code.split('\n');
+  const result: string[] = [];
+  let inBody = false;
+  let braceDepth = 0;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('#include') || trimmed.startsWith('#define') || trimmed === '' || trimmed === 'return 0;' || trimmed === '}') {
+      result.push(line);
+      if (trimmed.includes('{')) braceDepth++;
+      if (trimmed.includes('}')) braceDepth--;
+      continue;
+    }
+    if (trimmed.startsWith('int main') || trimmed.startsWith('float ') || trimmed.startsWith('int ') || trimmed.startsWith('char ')) {
+      if (braceDepth <= 1) { result.push(line); if (trimmed.includes('{')) braceDepth++; continue; }
+    }
+    if (trimmed.includes('{')) braceDepth++;
+    if (trimmed.includes('}')) braceDepth--;
+    if (!inBody && braceDepth >= 1) {
+      result.push('    // escribe la l\u00f3gica aqu\u00ed');
+      inBody = true;
+    }
+  }
+  return result.join('\n');
+}
+
 // Build practice screens for a specific level
 export function buildPracticeScreens(exercise: {
   slug: string;
@@ -329,40 +383,29 @@ export function buildPracticeScreens(exercise: {
   const data = PRACTICE_DATA[exercise.slug];
   const intro: Screen = { type: 'intro', text: `Ahora t\u00fa.\nRecuerda: ${exercise.pattern.toLowerCase().slice(0, 60)}` };
 
+  // Manual data available — use it
   if (data) {
     switch (level) {
-      case 1:
-        return [
-          intro,
-          { type: 'fill', title: 'Completa los huecos', codeWithGaps: data.fillCode, answers: data.fillAnswers },
-          { type: 'final', text: 'Bien. Cada hueco que rellenas te acerca m\u00e1s.' },
-        ];
-      case 2:
-        return [
-          intro,
-          { type: 'ghost', title: 'Escribe sobre la gu\u00eda', ghostCode: data.ghostCode },
-          { type: 'final', text: 'Vas cogiendo soltura.' },
-        ];
-      case 3:
-        return [
-          intro,
-          { type: 'partial', title: 'Completa la l\u00f3gica', starterCode: data.starterCode },
-          { type: 'final', text: 'Cada vez necesitas menos ayuda.' },
-        ];
-      case 4:
-        return [
-          intro,
-          { type: 'code', prompt: 'Escr\u00edbelo desde cero.' },
-          { type: 'final', text: 'Lo has hecho t\u00fa solo.' },
-        ];
+      case 1: return [intro, { type: 'fill', title: 'Completa los huecos', codeWithGaps: data.fillCode, answers: data.fillAnswers }, { type: 'final', text: 'Bien. Cada hueco que rellenas te acerca m\u00e1s.' }];
+      case 2: return [intro, { type: 'ghost', title: 'Escribe sobre la gu\u00eda', ghostCode: data.ghostCode }, { type: 'final', text: 'Vas cogiendo soltura.' }];
+      case 3: return [intro, { type: 'partial', title: 'Completa la l\u00f3gica', starterCode: data.starterCode }, { type: 'final', text: 'Cada vez necesitas menos ayuda.' }];
+      case 4: return [intro, { type: 'code', prompt: 'Escr\u00edbelo desde cero.' }, { type: 'final', text: 'Lo has hecho t\u00fa solo.' }];
     }
   }
 
-  // Fallback for exercises without practice data
-  return [
-    { type: 'level-select' },
-    intro,
-    { type: 'code', prompt: 'Escribe tu soluci\u00f3n.' },
-    { type: 'final', text: 'Buen trabajo.' },
-  ];
+  // Auto-generate from solutionCode
+  switch (level) {
+    case 1: {
+      const { codeWithGaps, answers } = autoFill(exercise.solutionCode);
+      return [intro, { type: 'fill', title: 'Completa los huecos', codeWithGaps, answers }, { type: 'final', text: 'Bien. Ya reconoces las piezas.' }];
+    }
+    case 2:
+      return [intro, { type: 'ghost', title: 'Escribe sobre la gu\u00eda', ghostCode: exercise.solutionCode }, { type: 'final', text: 'Vas cogiendo soltura.' }];
+    case 3: {
+      const starter = autoStarter(exercise.solutionCode);
+      return [intro, { type: 'partial', title: 'Completa la l\u00f3gica', starterCode: starter }, { type: 'final', text: 'Cada vez necesitas menos ayuda.' }];
+    }
+    case 4:
+      return [intro, { type: 'code', prompt: 'Escr\u00edbelo desde cero.' }, { type: 'final', text: 'Lo has hecho t\u00fa solo.' }];
+  }
 }
