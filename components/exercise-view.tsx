@@ -258,28 +258,37 @@ function ScreenFlow({ exercise, screens, phase, onBack, onNavigate, onChangePhas
             </div>
           )}
 
-          {screen.type === 'fill' && (
-            <div>
-              <Label>{screen.title}</Label>
-              <p className="text-base text-gray-500 mb-3">Cada ___ es un hueco. Las piezas estan abajo.</p>
-              <pre className="bg-zinc-900 text-zinc-100 rounded-2xl p-4 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-4">{screen.codeWithGaps}</pre>
-              <div className="mb-4">
-                <p className="text-xs text-gray-400 mb-2">Piezas (en orden):</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {screen.answers.map((a, i) => {
-                    const hint = FILL_HINTS[a];
-                    return (
-                      <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-gray-100 rounded-lg text-sm">
-                        <span className="font-mono">{a}</span>
-                        {hint && <span className="text-gray-400 text-xs">{hint}</span>}
-                      </span>
-                    );
-                  })}
+          {screen.type === 'fill' && (() => {
+            // Number the gaps in the code: ___ → ①②③...
+            let gapIdx = 0;
+            const numberedCode = screen.codeWithGaps.replace(/___/g, () => {
+              gapIdx++;
+              return `[${gapIdx}]`;
+            });
+            return (
+              <div>
+                <Label>{screen.title}</Label>
+                <p className="text-base text-gray-500 mb-3">Cada [n] es un hueco. Las piezas est\u00e1n abajo.</p>
+                <pre className="bg-zinc-900 text-zinc-100 rounded-2xl p-4 text-sm font-mono whitespace-pre-wrap overflow-x-auto mb-4">{numberedCode}</pre>
+                <div className="mb-4">
+                  <p className="text-xs text-gray-400 mb-2">Piezas:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {screen.answers.map((a, i) => {
+                      const hint = FILL_HINTS[a];
+                      return (
+                        <span key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 rounded-lg text-sm">
+                          <span className="text-xs text-gray-400 font-medium">[{i + 1}]</span>
+                          <span className="font-mono">{a}</span>
+                          {hint && <span className="text-gray-400 text-xs">{hint}</span>}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
+                <Btn onClick={advance}>Seguir</Btn>
               </div>
-              <Btn onClick={advance}>Seguir</Btn>
-            </div>
-          )}
+            );
+          })()}
 
           {screen.type === 'ghost' && (
             <div>
@@ -298,7 +307,7 @@ function ScreenFlow({ exercise, screens, phase, onBack, onNavigate, onChangePhas
           {screen.type === 'partial' && (
             <div>
               <Label>{screen.title}</Label>
-              <p className="text-sm text-gray-500 mb-3">Te damos la estructura. Completa la logica.</p>
+              <p className="text-sm text-gray-500 mb-3">Te damos la estructura. Completa la l\u00f3gica.</p>
               <textarea value={attemptText || screen.starterCode} onChange={e => handleAttemptChange(e.target.value)}
                 className="w-full h-56 bg-card border-2 rounded-2xl p-3 font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring mb-3" spellCheck={false} />
               <Btn onClick={advance} disabled={!attemptText.trim() || attemptText === screen.starterCode}>
@@ -401,28 +410,28 @@ function PracticeFlow({ exercise, onBack, onNavigate, onChangePhase }: {
           <div className="h-2 bg-gray-200 rounded-full mb-10" />
           <div className="flex-1 flex flex-col justify-center">
             <h1 className="text-2xl font-bold mb-2">{exercise.title}</h1>
-            <p className="text-base text-gray-500 mb-6">Elige cuanta ayuda quieres</p>
+            <p className="text-base text-gray-500 mb-6">Elige cu\u00e1nta ayuda quieres</p>
 
             <div className="space-y-2">
               <button onClick={() => setLevel(1)}
                 className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-emerald-50 hover:border-emerald-200 transition-colors">
                 <p className="font-medium text-base">Completar huecos</p>
-                <p className="text-sm text-gray-500">El codigo esta casi hecho. Solo rellenas.</p>
+                <p className="text-sm text-gray-500">El c\u00f3digo est\u00e1 casi hecho. Solo rellenas.</p>
               </button>
               <button onClick={() => setLevel(2)}
                 className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-blue-50 hover:border-blue-200 transition-colors">
                 <p className="font-medium text-base">Escribir con guia</p>
-                <p className="text-sm text-gray-500">Ves la solucion de fondo. Escribes encima.</p>
+                <p className="text-sm text-gray-500">Ves la soluci\u00f3n de fondo. Escribes encima.</p>
               </button>
               <button onClick={() => setLevel(3)}
                 className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-amber-50 hover:border-amber-200 transition-colors">
                 <p className="font-medium text-base">Solo la estructura</p>
-                <p className="text-sm text-gray-500">Te damos el esqueleto. Tu escribes el resto.</p>
+                <p className="text-sm text-gray-500">Te damos el esqueleto. T\u00fa escribes el resto.</p>
               </button>
               <button onClick={() => setLevel(4)}
                 className="w-full text-left px-5 py-4 border-2 rounded-2xl hover:bg-purple-50 hover:border-purple-200 transition-colors">
                 <p className="font-medium text-base">Desde cero</p>
-                <p className="text-sm text-gray-500">Sin ayuda. Tu solo.</p>
+                <p className="text-sm text-gray-500">Sin ayuda. T\u00fa solo.</p>
               </button>
             </div>
 
@@ -495,12 +504,15 @@ function StepFlow({ exercise, phase, onBack, onNavigate, onChangePhase }: { exer
     setJustification('');
   }, [exercise.slug, phase]);
 
-  // Timer
+  // Timer — only start after user passes intro (step > 0)
   useEffect(() => {
-    if (phase === 'learn') return;
+    if (phase === 'learn' || step === 0) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
     timerRef.current = setInterval(() => setSeconds(s => s + 1), 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [phase]);
+  }, [phase, step]);
 
   // Save
   const save = useCallback(() => {

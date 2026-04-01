@@ -23,7 +23,7 @@ export const SCREENS: Record<string, Screen[]> = {
     { type: 'quiz', question: '\u00bfQu\u00e9 letra se usa para leer un n\u00famero entero?', options: ['%s', '%d', '%f'], correctIndex: 1, feedbackCorrect: 'Eso es. %d para enteros.', feedbackWrong: '%d es para enteros. %s es texto, %f es decimal.' },
     { type: 'build', title: 'Paso 1: declarar variables', code: 'char nombre[50];\nint edad;\nfloat altura;', explanation: 'Una variable por cada dato que necesitas.' },
     { type: 'build', title: 'Paso 2: leer los datos', code: 'scanf("%s %d %f", nombre, &edad, &altura);', explanation: 'nombre va sin &. edad y altura s\u00ed llevan &.' },
-    { type: 'quiz', question: 'En scanf, \u00bfnombre lleva & delante?', options: ['S\u00ed, como el resto', 'No, nombre va sin &'], correctIndex: 1, feedbackCorrect: 'Eso es. Las cadenas de texto van sin &.', feedbackWrong: 'Las cadenas (char[]) van sin &. Solo int y float lo necesitan.' },
+    { type: 'quiz', question: 'En scanf, \u00bfnombre lleva & delante?', options: ['S\u00ed, como el resto', 'No, nombre va sin &'], correctIndex: 1, feedbackCorrect: 'Eso es. Las cadenas de texto van sin &.', feedbackWrong: 'Las cadenas de texto van sin &. Solo int y float lo necesitan.' },
     { type: 'build', title: 'Paso 3: mostrar resultados', code: 'printf("Nombre: %s\\n", nombre);\nprintf("Edad: %d\\n", edad);\nprintf("Altura: %.2f m\\n", altura);', explanation: '%.2f muestra 2 decimales.' },
     { type: 'final', text: 'Ya sabes leer datos y mostrarlos.\nEsto es la base de todo lo que viene.' },
   ],

@@ -5,6 +5,7 @@ import { BLOCKS } from '@/lib/blocks';
 import { EXERCISES, getExercisesByBlock } from '@/lib/exercises';
 import { getAllProgress, getBlockProgress, getWeakBlocks, type ExerciseProgressData } from '@/lib/progress';
 import { ExerciseView } from '@/components/exercise-view';
+import { CDictionary } from '@/components/c-dictionary';
 import type { ExerciseStatus } from '@/lib/types';
 
 export type Phase = 'learn' | 'practice' | 'test';
@@ -32,9 +33,25 @@ type View =
 export default function Home() {
   const [view, setView] = useState<View>({ type: 'home' });
   const [progress, setProgress] = useState<Record<string, ExerciseProgressData>>({});
+  const [showDictionary, setShowDictionary] = useState(false);
 
   useEffect(() => { setProgress(getAllProgress()); }, []);
   const refreshProgress = () => setProgress(getAllProgress());
+
+  const dictionaryButton = (
+    <button
+      onClick={() => setShowDictionary(true)}
+      className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-foreground text-background shadow-lg hover:opacity-90 transition-opacity flex items-center justify-center text-xl"
+      aria-label="Abrir Diccionario de C"
+      title="Diccionario de C"
+    >
+      📖
+    </button>
+  );
+
+  const dictionaryPanel = showDictionary ? (
+    <CDictionary onClose={() => setShowDictionary(false)} />
+  ) : null;
 
   // ─── HOME ───
   if (view.type === 'home') {
@@ -45,6 +62,7 @@ export default function Home() {
     const pct = Math.round((doneCount / EXERCISES.length) * 100);
 
     return (
+      <>
       <div className="flex flex-col flex-1 max-w-md mx-auto w-full px-5 py-12">
 
         {/* Hero */}
@@ -65,7 +83,7 @@ export default function Home() {
 
         {/* How it works - 3 steps visual */}
         <div className="bg-card rounded-2xl shadow-sm p-5 mb-8">
-          <p className="text-sm font-semibold mb-3">Asi funciona</p>
+          <p className="text-sm font-semibold mb-3">As\u00ed funciona</p>
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <span className="shrink-0 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">1</span>
@@ -133,6 +151,9 @@ export default function Home() {
           })}
         </div>
       </div>
+      {dictionaryButton}
+      {dictionaryPanel}
+      </>
     );
   }
 
@@ -141,6 +162,7 @@ export default function Home() {
     const block = BLOCKS.find(b => b.id === view.blockId)!;
     const exercises = getExercisesByBlock(view.blockId);
     return (
+      <>
       <div className="flex flex-col flex-1 max-w-md mx-auto w-full px-5 py-10">
         <button onClick={() => { refreshProgress(); setView({ type: 'home' }); }}
           className="text-sm text-gray-400 hover:text-foreground mb-6 self-start">← Volver</button>
@@ -163,6 +185,9 @@ export default function Home() {
           })}
         </div>
       </div>
+      {dictionaryButton}
+      {dictionaryPanel}
+      </>
     );
   }
 
@@ -173,6 +198,7 @@ export default function Home() {
     const p = progress[exercise.slug];
 
     return (
+      <>
       <div className="flex flex-col flex-1 max-w-md mx-auto w-full px-5 py-10">
         <button onClick={() => setView({ type: 'block', blockId: exercise.blockId })}
           className="text-sm text-gray-400 hover:text-foreground mb-8 self-start">← Volver</button>
@@ -220,12 +246,16 @@ export default function Home() {
           </p>
         )}
       </div>
+      {dictionaryButton}
+      {dictionaryPanel}
+      </>
     );
   }
 
   // ─── EXERCISE VIEW ───
   if (view.type === 'exercise') {
     return (
+      <>
       <ExerciseView
         slug={view.slug}
         phase={view.phase}
@@ -241,6 +271,9 @@ export default function Home() {
           setView({ type: 'exercise', slug: view.slug, phase });
         }}
       />
+      {dictionaryButton}
+      {dictionaryPanel}
+      </>
     );
   }
 
